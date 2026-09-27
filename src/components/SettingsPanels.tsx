@@ -3,7 +3,18 @@ import { useRef, type CSSProperties } from 'react';
 import { ACCEPT_ATTRIBUTE } from '../lib/loadImages';
 import { formatBytes } from '../lib/estimate';
 import { CURVES, FEVER_PRESETS, type FeverPreset } from '../presets';
-import type { Curve, FlowSettings, Illustration, OutputSettings, SizePreset, SparkleSettings, SparkleStyle } from '../types';
+import type {
+  Curve,
+  FlowSettings,
+  Illustration,
+  OutputSettings,
+  SizePreset,
+  SparkleSettings,
+  SparkleStyle,
+  TextBottom,
+  TextColor,
+  TextSettings,
+} from '../types';
 import { ChoiceButtons, Slider, Switch } from './Controls';
 import styles from './SettingsPanels.module.css';
 
@@ -100,6 +111,76 @@ export function SparkleControls({ sparkle, onChange }: { sparkle: SparkleSetting
       <Slider label="量" description="絵のうしろの尾・ときどき大きく光る" value={sparkle.amount} onChange={(amount) => onChange({ amount })} color="var(--yellow)" />
       <Switch label="白いふちで光らせる" description="絵のまわりを白くぼんやり光らせる" checked={sparkle.glow} onChange={(glow) => onChange({ glow })} />
       <Switch label="画面全体の星" description="量に合わせて画面中で星がまたたく" checked={sparkle.glitter} onChange={(glitter) => onChange({ glitter })} />
+    </div>
+  );
+}
+
+// ---- 文字 ----
+export function TextControls({ text, onChange }: { text: TextSettings; onChange: (patch: Partial<TextSettings>) => void }) {
+  const empty = !text.content.trim();
+  return (
+    <div className={styles.stack}>
+      <div className={styles.textField}>
+        <label className={styles.label} htmlFor="kira-text">
+          流す文字（1行に1つ）
+        </label>
+        <textarea
+          id="kira-text"
+          className={styles.textarea}
+          value={text.content}
+          rows={3}
+          maxLength={400}
+          placeholder={'わたしすげーー！！\n天才\nGG'}
+          onChange={(event) => onChange({ content: event.target.value })}
+        />
+        {empty && <p className={styles.note}>空のままなら文字は出ません（今までどおりイラストだけ流れます）</p>}
+      </div>
+
+      <div className={styles.twoColumns}>
+        <div className={styles.stackTight}>
+          <Switch
+            label="イラストと一緒に流す"
+            description="文字が絵にまざって流れる（回転なし）"
+            checked={text.flow}
+            onChange={(flow) => onChange({ flow })}
+          />
+          <div>
+            <p className={styles.label}>下に固定</p>
+            <ChoiceButtons<TextBottom>
+              label="下に固定"
+              value={text.bottom}
+              onChange={(bottom) => onChange({ bottom })}
+              columns={3}
+              choices={[
+                { value: 'off', label: 'なし' },
+                { value: 'fixed', label: '固定', sub: 'ドンと出る' },
+                { value: 'shake', label: '固定＋シェイク', sub: 'ガタガタ揺れる' },
+              ]}
+            />
+          </div>
+        </div>
+        <div className={styles.stackTight}>
+          <div>
+            <p className={styles.label}>文字の色</p>
+            <ChoiceButtons<TextColor>
+              label="文字の色"
+              value={text.color}
+              onChange={(color) => onChange({ color })}
+              columns={4}
+              choices={[
+                { value: 'rainbow', label: 'カラフル' },
+                { value: 'yellow', label: '黄' },
+                { value: 'pink', label: 'ピンク' },
+                { value: 'white', label: '白' },
+              ]}
+            />
+          </div>
+          <Slider label="文字の大きさ" value={text.size} onChange={(size) => onChange({ size })} color="var(--orange)" />
+          {text.flow && (
+            <Slider label="文字の量" description="流れるもののうち文字の割合" value={text.amount} onChange={(amount) => onChange({ amount })} color="var(--orange)" />
+          )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,8 +1,8 @@
 // リアルタイムプレビュー。書き出しと同じ台本（scene）と描画（renderFrame）を使います。
 // 下のグラフは「いつ、どれくらい流れるか」。ドラッグで好きな時刻を見られます。
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { prepareAssets, prepareBackground, renderFrame } from '../lib/renderer';
-import type { Scene } from '../lib/scene';
+import { prepareAssets, prepareBackground, renderFrame, type TextSources } from '../lib/renderer';
+import { phraseHeight, type Scene } from '../lib/scene';
 import type { Illustration, Settings } from '../types';
 import styles from './PreviewPlayer.module.css';
 import { PauseIcon, PlayIcon, RestartIcon } from './Stickers';
@@ -10,13 +10,15 @@ import { PauseIcon, PlayIcon, RestartIcon } from './Stickers';
 type Props = {
   scene: Scene;
   images: Illustration[];
+  /** 文字の画像（文字を出さないときは null） */
+  textSources: TextSources | null;
   settings: Settings;
   backgroundImage: Illustration | null;
 };
 
 const PREVIEW_LONG_SIDE = 960;
 
-export function PreviewPlayer({ scene, images, settings, backgroundImage }: Props) {
+export function PreviewPlayer({ scene, images, textSources, settings, backgroundImage }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [playing, setPlaying] = useState(true);
   const [time, setTime] = useState(0);
@@ -25,10 +27,15 @@ export function PreviewPlayer({ scene, images, settings, backgroundImage }: Prop
   const scale = Math.min(1, PREVIEW_LONG_SIDE / Math.max(scene.width, scene.height));
   const width = Math.round(scene.width * scale);
   const height = Math.round(scene.height * scale);
-  const spriteHeight = scene.height * settings.flow.sizeMax * scale * Math.min(2, window.devicePixelRatio || 1);
+  const pixelRatio = scale * Math.min(2, window.devicePixelRatio || 1);
+  const spriteHeight = scene.height * settings.flow.sizeMax * pixelRatio;
+  const textHeight = phraseHeight(settings, scene.height) * pixelRatio;
   const assets = useMemo(
-    () => ({ ...prepareAssets(images, spriteHeight), background: prepareBackground(backgroundImage, width, height) }),
-    [images, spriteHeight, backgroundImage, width, height],
+    () => ({
+      ...prepareAssets(images, spriteHeight, { sources: textSources, phraseHeight: textHeight }),
+      background: prepareBackground(backgroundImage, width, height),
+    }),
+    [images, spriteHeight, textSources, textHeight, backgroundImage, width, height],
   );
 
   const draw = (t: number) => {
@@ -83,10 +90,10 @@ export function PreviewPlayer({ scene, images, settings, backgroundImage }: Prop
     return `M0,28 L${points.join(' L')} L100,28 Z`;
   }, [scene]);
 
-  if (images.length === 0) {
+  if (images.length === 0 && !textSources) {
     return (
       <div className={styles.empty}>
-        <p>イラストを入れると、ここで流れ方を確認できます</p>
+        <p>イラストか文字を入れると、ここで流れ方を確認できます</p>
       </div>
     );
   }
@@ -140,7 +147,7 @@ export function PreviewPlayer({ scene, images, settings, backgroundImage }: Prop
           <span>最初から</span>
         </button>
         <p className={styles.info}>
-          {time.toFixed(1)} / {scene.totalSeconds.toFixed(1)} 秒 ・ 絵 {scene.sprites.length} 枚
+          {time.toFixed(1)} / {scene.totalSeconds.toFixed(1)} 秒 ・ 絵・文字 {scene.sprites.length} 個
         </p>
       </div>
     </div>

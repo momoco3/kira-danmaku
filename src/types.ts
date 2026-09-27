@@ -58,8 +58,28 @@ export type OutputSettings = {
   seed: number;
 };
 
+/** 文字の色: カラフル（1文字ずつ色が変わる）/ 単色 */
+export type TextColor = 'rainbow' | 'yellow' | 'pink' | 'white';
+
+/** 文字を下に固定するか: しない / 固定 / 固定＋シェイク */
+export type TextBottom = 'off' | 'fixed' | 'shake';
+
+export type TextSettings = {
+  /** 流す文字。1行に1つ。空なら文字は出ない */
+  content: string;
+  /** イラストと一緒に流す */
+  flow: boolean;
+  bottom: TextBottom;
+  color: TextColor;
+  /** 文字の大きさ 0〜1 */
+  size: number;
+  /** 一緒に流すときの文字の割合 0〜1 */
+  amount: number;
+};
+
 export type Settings = {
   flow: FlowSettings;
   sparkle: SparkleSettings;
+  text: TextSettings;
   output: OutputSettings;
 };

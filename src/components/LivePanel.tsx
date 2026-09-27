@@ -2,23 +2,25 @@
 import { useState } from 'react';
 import { downloadBlob } from '../lib/download';
 import { buildLiveHtml } from '../lib/liveHtml';
+import type { TextArt } from '../lib/textArt';
 import type { Illustration, Settings } from '../types';
 import styles from './LivePanel.module.css';
 
-type Props = { images: Illustration[]; settings: Settings };
+type Props = { images: Illustration[]; textArt: TextArt | null; settings: Settings };
 
-export function LivePanel({ images, settings }: Props) {
+export function LivePanel({ images, textArt, settings }: Props) {
+  const ready = images.length > 0 || !!textArt;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const make = async (open: boolean) => {
-    if (!images.length || busy) return;
+    if (!ready || busy) return;
     setBusy(true);
     setError(null);
     // ポップアップがブロックされないよう、先にウィンドウを開いておく
     const win = open ? window.open('', '_blank') : null;
     try {
-      const html = await buildLiveHtml(images, settings);
+      const html = await buildLiveHtml(images, textArt, settings);
       const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
       if (win) win.location.href = url;
       else downloadBlob(url, 'kira-danmaku-live.html');
@@ -34,18 +36,18 @@ export function LivePanel({ images, settings }: Props) {
   return (
     <div className={styles.wrap}>
       <p className={styles.lead}>
-        動画を作らずに、<b>配信中にその場で弾幕を流す</b>モードです。今のイラストと設定を1つの HTML ファイルにまとめてダウンロードし、
+        動画を作らずに、<b>配信中にその場で弾幕を流す</b>モードです。今のイラスト・文字と設定を1つの HTML ファイルにまとめてダウンロードし、
         OBS の「ブラウザソース」で読み込みます。流れ方は毎回変わり、続けて出すと弾幕が重なります。
       </p>
       <div className={styles.buttons}>
-        <button type="button" className={`${styles.button} ${styles.primary}`} disabled={!images.length || busy} onClick={() => make(false)}>
+        <button type="button" className={`${styles.button} ${styles.primary}`} disabled={!ready || busy} onClick={() => make(false)}>
           ⬇ 生配信用ファイル（HTML）をダウンロード
         </button>
-        <button type="button" className={styles.button} disabled={!images.length || busy} onClick={() => make(true)}>
+        <button type="button" className={styles.button} disabled={!ready || busy} onClick={() => make(true)}>
           このブラウザで試す
         </button>
       </div>
-      {!images.length && <p className={styles.note}>まずはイラストを入れてください。</p>}
+      {!ready && <p className={styles.note}>まずはイラストか文字を入れてください。</p>}
       {error && (
         <p className={styles.error} role="alert">
           作れませんでした: {error}

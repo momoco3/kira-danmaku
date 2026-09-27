@@ -3,14 +3,16 @@
 // ふつうのブラウザで開いたときは、クリック / スペースキー / Enter で流れます。
 //
 // このファイルは vite.live.config.ts で1つの JS にまとめられ、HTML に埋め込まれます。
-import { prepareAssets, renderFrame } from '../lib/renderer';
-import { buildScene, type Scene } from '../lib/scene';
+import { prepareAssets, renderFrame, type ArtSource, type TextSources } from '../lib/renderer';
+import { buildScene, phraseHeight, type Scene } from '../lib/scene';
 import type { Illustration, Settings } from '../types';
 
 export type LiveConfig = {
   settings: Settings;
   /** イラスト（data URL） */
   images: string[];
+  /** 文字の画像（data URL）。文字を出さないときは null */
+  text?: { phrases: string[]; banner: string | null; bannerLines: number } | null;
 };
 
 declare global {
@@ -30,26 +32,35 @@ async function start() {
   const inObs = !!window.obsstudio;
   if (hint && inObs) hint.remove();
 
+  const load = async (src: string): Promise<ArtSource & { image: HTMLImageElement }> => {
+    const image = new Image();
+    image.src = src;
+    await image.decode();
+    return { image, width: image.naturalWidth, height: image.naturalHeight };
+  };
   const illustrations: Illustration[] = await Promise.all(
-    config.images.map(async (src, i) => {
-      const image = new Image();
-      image.src = src;
-      await image.decode();
-      return { id: String(i), name: `image-${i}`, url: src, width: image.naturalWidth, height: image.naturalHeight, image };
-    }),
+    config.images.map(async (src, i) => ({ id: String(i), name: `image-${i}`, url: src, ...(await load(src)) })),
   );
+  const text: TextSources | null = config.text
+    ? {
+        phrases: await Promise.all(config.text.phrases.map(load)),
+        banner: config.text.banner ? await load(config.text.banner) : null,
+        bannerLines: config.text.bannerLines,
+      }
+    : null;
+  const textCount = text?.phrases.length ?? 0;
 
   // 配信ソフトの上では背景はいつも透明
   const settings: Settings = { ...config.settings, output: { ...config.settings.output, background: 'transparent' } };
   let width = 0;
   let height = 0;
-  let assets = prepareAssets(illustrations, 1);
+  let assets = prepareAssets(illustrations, 1, { sources: text, phraseHeight: 1 });
   const resize = () => {
     width = Math.max(1, Math.round(window.innerWidth));
     height = Math.max(1, Math.round(window.innerHeight));
     canvas.width = width;
     canvas.height = height;
-    assets = prepareAssets(illustrations, height * settings.flow.sizeMax);
+    assets = prepareAssets(illustrations, height * settings.flow.sizeMax, { sources: text, phraseHeight: phraseHeight(settings, height) });
   };
   resize();
   window.addEventListener('resize', resize);
@@ -73,7 +84,7 @@ async function start() {
   const fire = () => {
     const seed = Math.floor(Math.random() * 1e9) + 1;
     const waveSettings: Settings = { ...settings, output: { ...settings.output, seed } };
-    waves.push({ scene: buildScene(waveSettings, illustrations.length, width, height), startedAt: performance.now(), settings: waveSettings });
+    waves.push({ scene: buildScene(waveSettings, illustrations.length, width, height, textCount), startedAt: performance.now(), settings: waveSettings });
     hint?.classList.add('hidden');
     if (!running) {
       running = true;

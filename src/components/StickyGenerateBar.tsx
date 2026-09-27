@@ -1,5 +1,5 @@
 // スマホで画面下に固定表示する「Generate」ボタンです。
-// 07 Export のボタンが画面に見えているときは、重複しないよう隠れます。
+// 08 Export のボタンが画面に見えているときは、重複しないよう隠れます。
 import type { OutputFormat } from '../types';
 import styles from './StickyGenerateBar.module.css';
 import { SparkleIcon } from './Stickers';

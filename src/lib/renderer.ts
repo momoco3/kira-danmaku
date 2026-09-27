@@ -1,10 +1,22 @@
 // 1コマを描くファイルです。プレビューと書き出しで共通です。
 // 描く順番: 画面全体の星 → 絵の後ろのキラキラの尾 → 絵（光のにじみ＋絵）→ 絵に乗る「キラーン」
 import type { Illustration, Settings } from '../types';
-import { hash01, spritePose, type Scene } from './scene';
+import { bannerPose, hash01, spritePose, type Scene } from './scene';
+
+type SpriteArt = { canvas: HTMLCanvasElement; glow: HTMLCanvasElement; aspect: number; glowPad: number };
+
+/** 絵のもと（読み込んだイラスト、文字の画像など） */
+export type ArtSource = { image: CanvasImageSource; width: number; height: number };
+
+/** 文字の画像（textArt.ts で作ったもの、生配信モードでは埋め込んだ画像） */
+export type TextSources = { phrases: ArtSource[]; banner: ArtSource | null; bannerLines: number };
 
 export type Assets = {
-  images: { canvas: HTMLCanvasElement; glow: HTMLCanvasElement; aspect: number; glowPad: number }[];
+  images: SpriteArt[];
+  /** 一緒に流す文字 */
+  texts: SpriteArt[];
+  /** 下に固定する文字 */
+  banner: { image: CanvasImageSource; aspect: number; lines: number } | null;
   glints: HTMLCanvasElement[];
   /** 主線の太いイラストの星 */
   stars: HTMLCanvasElement[];
@@ -29,29 +41,40 @@ const GLINT_COLORS = ['#ffffff', '#fff3a0', '#ffc6ea', '#bff4ff', '#e2d4ff'];
 const STAR_COLORS = ['#ffd93b', '#ff5fa2', '#4fd8ff', '#a4f23b', '#a57bff', '#ff9a3d'];
 const INK = '#2b2140';
 
-/** 絵とキラキラを、描きやすい大きさの画像に先に変換しておく */
-export function prepareAssets(illustrations: Illustration[], spriteHeight: number): Assets {
-  const images = illustrations.map((ill) => {
-    const aspect = ill.width / ill.height;
-    const h = Math.max(8, Math.round(spriteHeight));
-    const w = Math.max(8, Math.round(h * aspect));
-    const canvas = makeCanvas(w, h);
-    const ctx = canvas.getContext('2d')!;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(ill.image, 0, 0, w, h);
+/**
+ * 絵とキラキラを、描きやすい大きさの画像に先に変換しておく
+ * @param text 文字の画像と、流す文字の高さ（px）
+ */
+export function prepareAssets(illustrations: ArtSource[], spriteHeight: number, text?: { sources: TextSources | null; phraseHeight: number }): Assets {
+  const sources = text?.sources;
+  return {
+    images: illustrations.map((ill) => prepareSprite(ill, spriteHeight)),
+    texts: sources ? sources.phrases.map((p) => prepareSprite(p, text.phraseHeight * 1.2)) : [],
+    banner: sources?.banner ? { image: sources.banner.image, aspect: sources.banner.width / sources.banner.height, lines: sources.bannerLines } : null,
+    glints: GLINT_COLORS.map(makeGlint),
+    stars: STAR_COLORS.map(makeStar),
+  };
+}
 
-    // 光のにじみ: 絵の形の影を白くぼかしたもの（Safari でも使える shadowBlur を使う）
-    const glowPad = Math.round(h * 0.14);
-    const glow = makeCanvas(w + glowPad * 2, h + glowPad * 2);
-    const g = glow.getContext('2d')!;
-    g.shadowColor = 'rgba(255, 250, 225, 0.95)';
-    g.shadowBlur = glowPad * 0.9;
-    g.shadowOffsetX = 10000;
-    g.drawImage(canvas, glowPad - 10000, glowPad);
-    g.drawImage(canvas, glowPad - 10000, glowPad);
-    return { canvas, glow, aspect, glowPad };
-  });
-  return { images, glints: GLINT_COLORS.map(makeGlint), stars: STAR_COLORS.map(makeStar) };
+function prepareSprite(source: ArtSource, spriteHeight: number): SpriteArt {
+  const aspect = source.width / source.height;
+  const h = Math.max(8, Math.round(spriteHeight));
+  const w = Math.max(8, Math.round(h * aspect));
+  const canvas = makeCanvas(w, h);
+  const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(source.image, 0, 0, w, h);
+
+  // 光のにじみ: 絵の形の影を白くぼかしたもの（Safari でも使える shadowBlur を使う）
+  const glowPad = Math.round(h * 0.14);
+  const glow = makeCanvas(w + glowPad * 2, h + glowPad * 2);
+  const g = glow.getContext('2d')!;
+  g.shadowColor = 'rgba(255, 250, 225, 0.95)';
+  g.shadowBlur = glowPad * 0.9;
+  g.shadowOffsetX = 10000;
+  g.drawImage(canvas, glowPad - 10000, glowPad);
+  g.drawImage(canvas, glowPad - 10000, glowPad);
+  return { canvas, glow, aspect, glowPad };
 }
 
 /** 主線の太い、ぷっくりしたイラストの星 */
@@ -182,6 +205,8 @@ export function renderFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: numb
     }
   }
 
+  const artOf = (sprite: Scene['sprites'][number]) => (sprite.text ? assets.texts : assets.images)[sprite.imageIndex];
+
   // ---- 表示中の絵を集める ----
   const visible: { sprite: (typeof scene.sprites)[number]; index: number }[] = [];
   scene.sprites.forEach((sprite, index) => {
@@ -192,7 +217,7 @@ export function renderFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: numb
   if (amount > 0) {
     const interval = 0.2 - 0.165 * amount;
     for (const { sprite, index } of visible) {
-      const image = assets.images[sprite.imageIndex];
+      const image = artOf(sprite);
       if (!image) continue;
       const first = Math.max(0, Math.ceil((t - TRAIL_LIFE - sprite.spawn) / interval));
       const last = Math.floor((Math.min(t, sprite.spawn + sprite.crossTime) - sprite.spawn) / interval);
@@ -214,7 +239,7 @@ export function renderFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: numb
   // ---- 絵 ----
   ctx.globalCompositeOperation = 'source-over';
   for (const { sprite, index } of visible) {
-    const image = assets.images[sprite.imageIndex];
+    const image = artOf(sprite);
     if (!image) continue;
     const pose = spritePose(sprite, t, scene, settings, image.aspect);
     if (!pose) continue;
@@ -242,6 +267,37 @@ export function renderFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: numb
         drawGlint(Math.floor(hash01(index + 13) * 6), sx, sy, pose.h * 0.8 * a, a, age * 3, hash01(index + 14), 0.9);
         ctx.globalCompositeOperation = 'source-over';
       }
+    }
+  }
+
+  // ---- 下に固定する文字（いちばん手前） ----
+  const banner = assets.banner;
+  const bp = banner && bannerPose(t, scene, settings, banner.aspect, banner.lines);
+  if (banner && bp && bp.scale > 0.01) {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = bp.alpha;
+    ctx.imageSmoothingQuality = 'high';
+    const w = bp.w * bp.scale;
+    const h = bp.h * bp.scale;
+    ctx.drawImage(banner.image, bp.x - w / 2, bp.y - h / 2, w, h);
+    ctx.globalAlpha = 1;
+    // 文字のまわりで星がポンッとはじける
+    if (amount > 0 && t > 0.3) {
+      const slot = 0.12;
+      for (let k = Math.floor((t - 0.5) / slot); k <= Math.floor(t / slot); k++) {
+        const seed = k * 53 + settings.output.seed * 101 + 5;
+        if (hash01(seed) > amount * 0.9) continue;
+        const age = t - (k * slot + hash01(seed + 1) * slot);
+        if (age < 0 || age > 0.5) continue;
+        const a = Math.sin((Math.PI * age) / 0.5) * bp.alpha;
+        // 文字の四角のふち付近に出す
+        const side = hash01(seed + 2);
+        const u = hash01(seed + 3);
+        const sx = bp.x + (side < 0.5 ? (u - 0.5) * w : (side < 0.75 ? -0.5 : 0.5) * w * 0.98);
+        const sy = bp.y + (side < 0.5 ? (side < 0.25 ? -0.5 : 0.5) * h * 0.85 : (u - 0.5) * h);
+        drawGlint(Math.floor(hash01(seed + 4) * 6), sx, sy, H * 0.07 * (0.6 + hash01(seed + 5) * 0.6) * a, a, age * 3, hash01(seed + 6), 1.3);
+      }
+      ctx.globalCompositeOperation = 'source-over';
     }
   }
   ctx.restore();

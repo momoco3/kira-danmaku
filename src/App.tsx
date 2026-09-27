@@ -7,16 +7,17 @@ import { ImageList } from './components/ImageList';
 import { LivePanel } from './components/LivePanel';
 import { Panel } from './components/Panel';
 import { PreviewPlayer } from './components/PreviewPlayer';
-import { FeverPresets, FlowControls, OutputControls, SparkleControls } from './components/SettingsPanels';
+import { FeverPresets, FlowControls, OutputControls, SparkleControls, TextControls } from './components/SettingsPanels';
 import { BackgroundSplashes } from './components/Stickers';
 import { StickyGenerateBar } from './components/StickyGenerateBar';
 import { makeFileName } from './lib/download';
 import { bitrateFor, detectSupport, encodeVideo } from './lib/encodeVideo';
 import { isSupportedImage, loadIllustration, releaseImage } from './lib/loadImages';
 import { prepareAssets, prepareBackground, renderFrame, sizeOf } from './lib/renderer';
-import { buildScene } from './lib/scene';
+import { buildScene, phraseHeight } from './lib/scene';
+import { makeTextArt, toTextSources, type TextArt } from './lib/textArt';
 import { DEFAULT_SETTINGS, findFeverPreset } from './presets';
-import type { FlowSettings, Illustration, OutputSettings, Settings, SparkleSettings } from './types';
+import type { FlowSettings, Illustration, OutputSettings, Settings, SparkleSettings, TextSettings } from './types';
 
 export default function App() {
   const [images, setImages] = useState<Illustration[]>([]);
@@ -45,17 +46,34 @@ export default function App() {
     });
   }, []);
 
+  // 文字の画像（フォントを読み込んでから作るので、少し遅れてできる）
+  const [textArt, setTextArt] = useState<TextArt | null>(null);
+  const { content: textContent, color: textColor } = settings.text;
+  useEffect(() => {
+    let cancelled = false;
+    void makeTextArt({ content: textContent, color: textColor }).then((art) => {
+      if (!cancelled) setTextArt(art);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [textContent, textColor]);
+  const textSources = useMemo(() => toTextSources(textArt), [textArt]);
+  const hasText = !!textArt && (settings.text.flow || settings.text.bottom !== 'off');
+  const canMake = images.length > 0 || hasText;
+
   const { width, height } = sizeOf(settings.output.size);
-  const scene = useMemo(() => buildScene(settings, images.length, width, height), [settings, images.length, width, height]);
+  const textCount = textArt?.phrases.length ?? 0;
+  const scene = useMemo(() => buildScene(settings, images.length, width, height, textCount), [settings, images.length, width, height, textCount]);
   // 透過 WebM は「透明度の映像」が別に入るぶん大きくなる
   const transparentWebm = settings.output.format === 'webm' && settings.output.background === 'transparent';
   const estimatedBytes = ((bitrateFor(width, height, settings.output.fps) * scene.totalSeconds) / 8) * (transparentWebm ? 1.8 : 1);
   const activePreset = findFeverPreset(settings);
 
-  const source = useMemo(() => ({ images, settings, backgroundImage }), [images, settings, backgroundImage]);
+  const source = useMemo(() => ({ images, settings, backgroundImage, textArt }), [images, settings, backgroundImage, textArt]);
   const currentResult = result && result.source === source ? result : null;
 
-  // 07 Export が見えていないときだけ、スマホで下に固定ボタンを出す
+  // 08 Export が見えていないときだけ、スマホで下に固定ボタンを出す
   useEffect(() => {
     const panel = document.getElementById('export');
     if (!panel) return;
@@ -121,16 +139,17 @@ export default function App() {
 
   const updateFlow = (patch: Partial<FlowSettings>) => setSettings((s) => ({ ...s, flow: { ...s.flow, ...patch } }));
   const updateSparkle = (patch: Partial<SparkleSettings>) => setSettings((s) => ({ ...s, sparkle: { ...s.sparkle, ...patch } }));
+  const updateText = (patch: Partial<TextSettings>) => setSettings((s) => ({ ...s, text: { ...s.text, ...patch } }));
   const updateOutput = (patch: Partial<OutputSettings>) => setSettings((s) => ({ ...s, output: { ...s.output, ...patch } }));
 
   const generate = async () => {
-    if (!images.length || working) return;
+    if (!canMake || working) return;
     setWorking(true);
     setProgress(0);
     setError(null);
     try {
       const assets = {
-        ...prepareAssets(images, height * settings.flow.sizeMax),
+        ...prepareAssets(images, height * settings.flow.sizeMax, { sources: textSources, phraseHeight: phraseHeight(settings, height) }),
         background: prepareBackground(backgroundImage, width, height),
       };
       const blob = await encodeVideo(
@@ -175,11 +194,15 @@ export default function App() {
             )}
           </Panel>
 
-          <Panel id="preview" title="02 Preview" color="var(--yellow)">
-            <PreviewPlayer scene={scene} images={images} settings={settings} backgroundImage={backgroundImage} />
+          <Panel id="text" title="02 Text" color="var(--orange)" hint="文字も流せます。「わたしすげーー！！」など。1行に1つ書くと、ランダムに混ざって流れます">
+            <TextControls text={settings.text} onChange={updateText} />
           </Panel>
 
-          <Panel id="fever" title="03 Fever" color="var(--pink)" hint="どれくらいフィーバーさせるか。選んだあと下で細かく調整できます">
+          <Panel id="preview" title="03 Preview" color="var(--yellow)">
+            <PreviewPlayer scene={scene} images={images} textSources={hasText ? textSources : null} settings={settings} backgroundImage={backgroundImage} />
+          </Panel>
+
+          <Panel id="fever" title="04 Fever" color="var(--pink)" hint="どれくらいフィーバーさせるか。選んだあと下で細かく調整できます">
             <FeverPresets
               activeId={activePreset?.id}
               onSelect={(preset) =>
@@ -189,15 +212,15 @@ export default function App() {
           </Panel>
 
           <div className={styles.twoColumns}>
-            <Panel id="flow" title="04 Flow" color="var(--lime)">
+            <Panel id="flow" title="05 Flow" color="var(--lime)">
               <FlowControls flow={settings.flow} onChange={updateFlow} />
             </Panel>
-            <Panel id="sparkle" title="05 Sparkle" color="var(--sky)">
+            <Panel id="sparkle" title="06 Sparkle" color="var(--sky)">
               <SparkleControls sparkle={settings.sparkle} onChange={updateSparkle} />
             </Panel>
           </div>
 
-          <Panel id="output" title="06 Output" color="var(--purple)">
+          <Panel id="output" title="07 Output" color="var(--purple)">
             <OutputControls
               output={settings.output}
               onChange={updateOutput}
@@ -210,10 +233,10 @@ export default function App() {
             />
           </Panel>
 
-          <Panel id="export" title="07 Export" color="var(--orange)">
+          <Panel id="export" title="08 Export" color="var(--orange)">
             <ExportPanel
               format={settings.output.format}
-              canGenerate={images.length > 0}
+              canGenerate={canMake}
               working={working}
               progress={progress}
               result={currentResult}
@@ -222,8 +245,8 @@ export default function App() {
             />
           </Panel>
 
-          <Panel id="live" title="08 Live" color="var(--lime)" hint="生配信モード: OBS でその場で弾幕を流す">
-            <LivePanel images={images} settings={settings} />
+          <Panel id="live" title="09 Live" color="var(--lime)" hint="生配信モード: OBS でその場で弾幕を流す">
+            <LivePanel images={images} textArt={hasText ? textArt : null} settings={settings} />
           </Panel>
         </main>
 
@@ -238,7 +261,7 @@ export default function App() {
       </div>
 
       <StickyGenerateBar
-        visible={images.length > 0 && !exportInView}
+        visible={canMake && !exportInView}
         format={settings.output.format}
         working={working}
         progress={progress}

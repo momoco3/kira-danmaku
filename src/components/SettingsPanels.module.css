@@ -190,3 +190,30 @@
 .stats b {
   font-weight: 900;
 }
+
+/* ---- 文字 ---- */
+.textField {
+  display: flex;
+  flex-direction: column;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 84px;
+  padding: 10px 14px;
+  font: 400 1.15rem/1.4 var(--font-display);
+  color: var(--ink);
+  background: var(--paper);
+  border: var(--line-thin);
+  border-radius: var(--radius-s);
+  resize: vertical;
+}
+
+.textarea:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.textarea::placeholder {
+  color: #9a9aa8;
+}

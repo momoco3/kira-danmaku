@@ -33,5 +33,6 @@ export const CURVES: { value: Curve; label: string; description: string }[] = [
 export const DEFAULT_SETTINGS: Settings = {
   flow: { intensity: 0.55, speed: 0.55, curve: 'boom', sizeMin: 0.12, sizeMax: 0.32, wobble: 0.5, spin: 0.15, direction: 'rtl' },
   sparkle: { amount: 0.6, style: 'star', glow: true, glitter: true },
+  text: { content: '', flow: true, bottom: 'off', color: 'rainbow', size: 0.5, amount: 0.3 },
   output: { format: 'webm', size: '1920x1080', fps: 30, seconds: 5, background: 'transparent', seed: 1 },
 };

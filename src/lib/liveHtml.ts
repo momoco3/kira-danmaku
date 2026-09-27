@@ -3,13 +3,26 @@
 // 外部への通信はなく、OBS のブラウザソースで「ローカルファイル」として読み込めます。
 import type { LiveConfig } from '../live/runtime';
 import type { Illustration, Settings } from '../types';
+import type { TextArt } from './textArt';
 
 /** 埋め込む絵の最大の高さ（px）。大きすぎると HTML が重くなるので縮める */
 const MAX_IMAGE_HEIGHT = 640;
 
-export async function buildLiveHtml(images: Illustration[], settings: Settings): Promise<string> {
+/** 埋め込む文字の画像の最大の高さ（px） */
+const MAX_TEXT_HEIGHT = 160;
+
+export async function buildLiveHtml(images: Illustration[], textArt: TextArt | null, settings: Settings): Promise<string> {
   const runtime = await (await fetch(new URL('live-runtime.js', document.baseURI))).text();
-  const config: LiveConfig = { settings, images: images.map(toDataUrl) };
+  const config: LiveConfig = {
+    settings,
+    images: images.map((image) => toDataUrl(image.image, image.width, image.height, MAX_IMAGE_HEIGHT)),
+    text: textArt && {
+      phrases: textArt.phrases.map((c) => toDataUrl(c, c.width, c.height, MAX_TEXT_HEIGHT)),
+      // 下に固定する文字は大きく出るので、縮めすぎない
+      banner: textArt.banner && toDataUrl(textArt.banner, textArt.banner.width, textArt.banner.height, MAX_TEXT_HEIGHT * 2 * textArt.bannerLines),
+      bannerLines: textArt.bannerLines,
+    },
+  };
   const safe = (text: string) => text.replace(/<\/(script)/gi, '<\\/$1');
 
   return `<!doctype html>
@@ -36,13 +49,13 @@ export async function buildLiveHtml(images: Illustration[], settings: Settings):
 `;
 }
 
-function toDataUrl(image: Illustration): string {
-  const scale = Math.min(1, MAX_IMAGE_HEIGHT / image.height);
+function toDataUrl(image: CanvasImageSource, width: number, height: number, maxHeight: number): string {
+  const scale = Math.min(1, maxHeight / height);
   const canvas = document.createElement('canvas');
-  canvas.width = Math.max(1, Math.round(image.width * scale));
-  canvas.height = Math.max(1, Math.round(image.height * scale));
+  canvas.width = Math.max(1, Math.round(width * scale));
+  canvas.height = Math.max(1, Math.round(height * scale));
   const ctx = canvas.getContext('2d')!;
   ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(image.image, 0, 0, canvas.width, canvas.height);
+  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
   return canvas.toDataURL('image/png');
 }

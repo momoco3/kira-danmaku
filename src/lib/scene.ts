@@ -4,6 +4,8 @@
 import type { Curve, Settings } from '../types';
 
 export type Sprite = {
+  /** true なら文字（imageIndex は文字の番号） */
+  text: boolean;
   imageIndex: number;
   /** 画面に入ってくる時刻（秒） */
   spawn: number;
@@ -66,13 +68,26 @@ export function curveShape(curve: Curve, u: number): number {
   }
 }
 
-export function buildScene(settings: Settings, imageCount: number, width: number, height: number): Scene {
+/** 一緒に流す文字の高さ（px、ふちこみ） */
+export function phraseHeight(settings: Settings, height: number) {
+  return height * (0.07 + 0.09 * settings.text.size);
+}
+
+/**
+ * @param textCount 一緒に流す文字の数（0 なら文字は流れない）
+ */
+export function buildScene(settings: Settings, imageCount: number, width: number, height: number, textCount = 0): Scene {
   const { flow, output } = settings;
+  if (!settings.text.flow) textCount = 0;
+  // 文字の割合。絵がないときは文字だけ流す
+  const textShare = imageCount === 0 ? 1 : 0.6 * settings.text.amount;
   const random = createRandom(output.seed * 7919 + 17);
   const spawnSeconds = output.seconds;
   const peakRate = PEAK_RATE_MIN + (PEAK_RATE_MAX - PEAK_RATE_MIN) * Math.pow(flow.intensity, 1.3);
   const envelope = (t: number) => (t < 0 || t > spawnSeconds ? 0 : curveShape(flow.curve, t / spawnSeconds));
-  const rateAt = (t: number) => START_RATE + (peakRate - START_RATE) * envelope(t);
+  // 文字だけのときは、読めるように量を減らす
+  const rateScale = imageCount === 0 && textCount > 0 ? 0.3 : 1;
+  const rateAt = (t: number) => (START_RATE + (peakRate - START_RATE) * envelope(t)) * rateScale;
   const baseCross = CROSS_TIME_SLOW + (CROSS_TIME_FAST - CROSS_TIME_SLOW) * flow.speed;
 
   // 高さは「レーン」に分けて、同じ高さに続けて出ないようにする
@@ -86,10 +101,14 @@ export function buildScene(settings: Settings, imageCount: number, width: number
     carry += rateAt(t) * dt;
     while (carry >= 1) {
       carry -= 1;
-      if (imageCount === 0) continue;
+      if (imageCount === 0 && textCount === 0) continue;
+      // 文字がないときは乱数を使わない（文字を足す前と同じ流れ方のまま）
+      const isText = textCount > 0 && (imageCount === 0 || random() < textShare);
       // 小さめの絵を多めに（奥行きが出る）
       const sizeT = Math.pow(random(), 1.8);
-      const size = height * (flow.sizeMin + (flow.sizeMax - flow.sizeMin) * sizeT);
+      const size = isText
+        ? phraseHeight(settings, height) * (0.8 + 0.4 * sizeT)
+        : height * (flow.sizeMin + (flow.sizeMax - flow.sizeMin) * sizeT);
       let lane = Math.floor(random() * lanes);
       if (lane === lastLane) lane = (lane + 1 + Math.floor(random() * (lanes - 1))) % lanes;
       lastLane = lane;
@@ -99,21 +118,23 @@ export function buildScene(settings: Settings, imageCount: number, width: number
       const crossTime = (baseCross * (0.8 + random() * 0.45)) / (0.8 + 0.45 * sizeT);
       const spawn = t + random() * dt;
       sprites.push({
-        imageIndex: Math.floor(random() * imageCount),
+        text: isText,
+        imageIndex: Math.floor(random() * (isText ? textCount : imageCount)),
         spawn,
         crossTime,
         size,
         y,
         wobblePhase: random() * Math.PI * 2,
         wobbleSpeed: 1.2 + random() * 1.6,
-        spinSpeed: random() < flow.spin ? (random() < 0.5 ? -1 : 1) * (0.6 + random() * 1.2) : 0,
+        // 文字は回さない
+        spinSpeed: random() < flow.spin && !isText ? (random() < 0.5 ? -1 : 1) * (0.6 + random() * 1.2) : 0,
         hue: random(),
       });
       maxEnd = Math.max(maxEnd, spawn + crossTime);
     }
   }
-  // 小さい絵を奥、大きい絵を手前に描く
-  sprites.sort((a, b) => a.size - b.size);
+  // 小さい絵を奥、大きい絵を手前に描く。文字は読めるよう絵より手前
+  sprites.sort((a, b) => Number(a.text) - Number(b.text) || a.size - b.size);
 
   return { width, height, sprites, spawnSeconds, totalSeconds: Math.max(spawnSeconds, maxEnd) + 0.2, envelope };
 }
@@ -129,10 +150,59 @@ export function spritePose(sprite: Sprite, t: number, scene: Scene, settings: Se
   const wobble = settings.flow.wobble;
   const phase = sprite.wobblePhase + age * sprite.wobbleSpeed * Math.PI * 2;
   const y = sprite.y + Math.sin(phase) * wobble * scene.height * 0.035;
-  const rotation = sprite.spinSpeed ? age * sprite.spinSpeed * Math.PI * 2 : Math.sin(phase * 0.8) * wobble * 0.22;
+  const rotation = sprite.text ? 0 : sprite.spinSpeed ? age * sprite.spinSpeed * Math.PI * 2 : Math.sin(phase * 0.8) * wobble * 0.22;
   // 揺れに合わせて少しだけ弾む
   const bounce = 1 + Math.sin(phase * 2) * wobble * 0.05;
   return { x, y, w, h: sprite.size, rotation, bounce };
+}
+
+const BANNER_POP_IN = 0.45;
+const BANNER_POP_OUT = 0.35;
+
+/**
+ * 下に固定する文字の位置と大きさ。
+ * @param aspect 文字の画像の横/縦
+ * @param lines 行数
+ */
+export function bannerPose(t: number, scene: Scene, settings: Settings, aspect: number, lines: number) {
+  const { width: W, height: H } = scene;
+  const mode = settings.text.bottom;
+  if (mode === 'off' || t < 0 || t > scene.totalSeconds) return null;
+  // 大きさ: 1行の高さを決めて、横や縦にはみ出すなら縮める
+  let h = H * (0.1 + 0.1 * settings.text.size) * (lines + 0.2);
+  let w = h * aspect;
+  const fit = Math.min(1, (W * 0.94) / w, (H * 0.5) / h);
+  w *= fit;
+  h *= fit;
+  let x = W / 2;
+  let y = H - H * 0.03 - h / 2;
+
+  // 出てくるときはポンッと弾んで、最後はしゅっと消える
+  let scale = 1;
+  let alpha = 1;
+  if (t < BANNER_POP_IN) scale = easeOutBack(t / BANNER_POP_IN);
+  const left = scene.totalSeconds - t;
+  if (left < BANNER_POP_OUT) {
+    const u = 1 - left / BANNER_POP_OUT;
+    scale *= 1 + 0.12 * u;
+    alpha = 1 - u;
+  }
+
+  // シェイク: 盛り上がっているときほど強く揺れる（1秒に24回ガタガタ）
+  if (mode === 'shake') {
+    const strength = H * 0.022 * (0.35 + 0.65 * scene.envelope(Math.min(t, scene.spawnSeconds)));
+    const step = Math.floor(t * 24);
+    x += (hash01(step * 2 + 1) - 0.5) * 2 * strength;
+    y += (hash01(step * 2 + 2) - 0.5) * 1.4 * strength;
+    scale *= 1 + (hash01(step * 2 + 3) - 0.5) * 0.04;
+  }
+  return { x, y, w, h, scale, alpha };
+}
+
+function easeOutBack(u: number) {
+  const c = 2.2;
+  const v = u - 1;
+  return Math.max(0, 1 + (c + 1) * v * v * v + c * v * v);
 }
 
 export function createRandom(seed: number): () => number {

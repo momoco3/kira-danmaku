@@ -41,7 +41,7 @@ export function ExportPanel({ format, canGenerate, working, progress, result, er
         <SparkleIcon size={26} color="var(--yellow)" />
         <span>{working ? `Generating… ${percent}%` : `Generate ${FORMAT_LABEL[format]}`}</span>
       </button>
-      {!canGenerate && !working && <p className={styles.help}>まずはイラストを入れてください</p>}
+      {!canGenerate && !working && <p className={styles.help}>まずはイラストか文字を入れてください</p>}
 
       {working && (
         <div
