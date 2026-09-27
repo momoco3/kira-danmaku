@@ -24,7 +24,6 @@
   max-width: 100%;
   max-height: min(62vh, 560px);
   border-radius: 8px;
-  outline: 2px dashed rgba(255, 255, 255, 0.25);
 }
 
 .timeline {

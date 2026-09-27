@@ -29,9 +29,13 @@ export type FlowSettings = {
   direction: 'rtl' | 'ltr';
 };
 
+/** キラキラの見た目: 光（キラッ）/ 主線の太いイラストの星 / 両方 */
+export type SparkleStyle = 'star' | 'glint' | 'mix';
+
 export type SparkleSettings = {
   /** キラキラの量 0〜1 */
   amount: number;
+  style: SparkleStyle;
   /** 絵のまわりをふんわり光らせる */
   glow: boolean;
   /** 画面全体にも星をまたたかせる */

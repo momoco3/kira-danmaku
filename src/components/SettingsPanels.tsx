@@ -2,7 +2,7 @@
 import type { CSSProperties } from 'react';
 import { formatBytes } from '../lib/estimate';
 import { CURVES, FEVER_PRESETS, type FeverPreset } from '../presets';
-import type { Curve, FlowSettings, OutputSettings, SizePreset, SparkleSettings } from '../types';
+import type { Curve, FlowSettings, OutputSettings, SizePreset, SparkleSettings, SparkleStyle } from '../types';
 import { ChoiceButtons, Slider, Switch } from './Controls';
 import styles from './SettingsPanels.module.css';
 
@@ -82,8 +82,22 @@ export function FlowControls({ flow, onChange }: { flow: FlowSettings; onChange:
 export function SparkleControls({ sparkle, onChange }: { sparkle: SparkleSettings; onChange: (patch: Partial<SparkleSettings>) => void }) {
   return (
     <div className={styles.stack}>
-      <Slider label="キラキラの量" description="絵のうしろの光の粒・キラーン" value={sparkle.amount} onChange={(amount) => onChange({ amount })} color="var(--yellow)" />
-      <Switch label="ふんわり光る" description="絵のまわりを白く光らせる" checked={sparkle.glow} onChange={(glow) => onChange({ glow })} />
+      <div>
+        <p className={styles.label}>見た目</p>
+        <ChoiceButtons<SparkleStyle>
+          label="キラキラの見た目"
+          value={sparkle.style}
+          onChange={(style) => onChange({ style })}
+          columns={3}
+          choices={[
+            { value: 'star', label: 'イラスト星', sub: '太い主線・カラフル' },
+            { value: 'glint', label: 'キラキラ', sub: '光のきらめき' },
+            { value: 'mix', label: '両方', sub: 'まぜる' },
+          ]}
+        />
+      </div>
+      <Slider label="量" description="絵のうしろの尾・ときどき大きく光る" value={sparkle.amount} onChange={(amount) => onChange({ amount })} color="var(--yellow)" />
+      <Switch label="白いふちで光らせる" description="絵のまわりを白くぼんやり光らせる" checked={sparkle.glow} onChange={(glow) => onChange({ glow })} />
       <Switch label="画面全体の星" description="量に合わせて画面中で星がまたたく" checked={sparkle.glitter} onChange={(glitter) => onChange({ glitter })} />
     </div>
   );
@@ -174,10 +188,10 @@ export function OutputControls({ output, onChange, support, totalSeconds, estima
             onChange={(size) => onChange({ size })}
             columns={2}
             choices={[
-              { value: '1920x1080', label: '1920×1080', sub: '横・フルHD' },
-              { value: '1280x720', label: '1280×720', sub: '横・軽め' },
-              { value: '1080x1920', label: '1080×1920', sub: '縦長' },
-              { value: '1080x1080', label: '1080×1080', sub: '正方形' },
+              { value: '1920x1080', label: 'YouTube 横', sub: '1920×1080' },
+              { value: '1080x1920', label: 'YouTube ショート', sub: '1080×1920（縦）' },
+              { value: '1280x720', label: '横・軽め', sub: '1280×720' },
+              { value: '1080x1080', label: '正方形', sub: '1080×1080' },
             ]}
           />
         </div>
