@@ -73,14 +73,17 @@ const TRAIL_LIFE = 0.6;
 const GLITTER_SLOT = 0.3;
 const GLITTER_LIFE = 0.8;
 
-export function renderFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number, assets: Assets, settings: Settings) {
+/**
+ * @param clear false にすると画面を消さずに重ねて描く（生配信モードで弾幕を重ねるとき）
+ */
+export function renderFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: number, assets: Assets, settings: Settings, clear = true) {
   const { width: W, height: H } = scene;
   const { sparkle, flow } = settings;
   const background = settings.output.background;
 
   ctx.save();
-  ctx.clearRect(0, 0, W, H);
-  if (background !== 'transparent') {
+  if (clear) ctx.clearRect(0, 0, W, H);
+  if (clear && background !== 'transparent') {
     ctx.fillStyle = background;
     ctx.fillRect(0, 0, W, H);
   }

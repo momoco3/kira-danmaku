@@ -4,6 +4,7 @@ import styles from './App.module.css';
 import { ExportPanel, type ExportResult } from './components/ExportPanel';
 import { Header } from './components/Header';
 import { ImageList } from './components/ImageList';
+import { LivePanel } from './components/LivePanel';
 import { Panel } from './components/Panel';
 import { PreviewPlayer } from './components/PreviewPlayer';
 import { FeverPresets, FlowControls, OutputControls, SparkleControls } from './components/SettingsPanels';
@@ -186,6 +187,10 @@ export default function App() {
               error={currentResult || working ? null : error}
               onGenerate={generate}
             />
+          </Panel>
+
+          <Panel id="live" title="08 Live" color="var(--lime)" hint="生配信モード: OBS でその場で弾幕を流す">
+            <LivePanel images={images} settings={settings} />
           </Panel>
         </main>
 

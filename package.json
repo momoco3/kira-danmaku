@@ -6,8 +6,9 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build:live": "vite build --config vite.live.config.ts",
+    "dev": "npm run build:live && vite",
+    "build": "tsc -b && npm run build:live && vite build",
     "lint": "oxlint",
     "preview": "vite preview"
   },
