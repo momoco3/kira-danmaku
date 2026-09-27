@@ -1,7 +1,7 @@
 // リアルタイムプレビュー。書き出しと同じ台本（scene）と描画（renderFrame）を使います。
 // 下のグラフは「いつ、どれくらい流れるか」。ドラッグで好きな時刻を見られます。
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { prepareAssets, renderFrame } from '../lib/renderer';
+import { prepareAssets, prepareBackground, renderFrame } from '../lib/renderer';
 import type { Scene } from '../lib/scene';
 import type { Illustration, Settings } from '../types';
 import styles from './PreviewPlayer.module.css';
@@ -11,11 +11,12 @@ type Props = {
   scene: Scene;
   images: Illustration[];
   settings: Settings;
+  backgroundImage: Illustration | null;
 };
 
 const PREVIEW_LONG_SIDE = 960;
 
-export function PreviewPlayer({ scene, images, settings }: Props) {
+export function PreviewPlayer({ scene, images, settings, backgroundImage }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [playing, setPlaying] = useState(true);
   const [time, setTime] = useState(0);
@@ -25,7 +26,10 @@ export function PreviewPlayer({ scene, images, settings }: Props) {
   const width = Math.round(scene.width * scale);
   const height = Math.round(scene.height * scale);
   const spriteHeight = scene.height * settings.flow.sizeMax * scale * Math.min(2, window.devicePixelRatio || 1);
-  const assets = useMemo(() => prepareAssets(images, spriteHeight), [images, spriteHeight]);
+  const assets = useMemo(
+    () => ({ ...prepareAssets(images, spriteHeight), background: prepareBackground(backgroundImage, width, height) }),
+    [images, spriteHeight, backgroundImage, width, height],
+  );
 
   const draw = (t: number) => {
     const ctx = canvasRef.current?.getContext('2d');

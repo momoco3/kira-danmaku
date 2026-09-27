@@ -8,7 +8,22 @@ export type Assets = {
   glints: HTMLCanvasElement[];
   /** 主線の太いイラストの星 */
   stars: HTMLCanvasElement[];
+  /** 背景画像（画面いっぱいに合わせたもの）。背景を「画像」にしたときだけ使う */
+  background?: HTMLCanvasElement | null;
 };
+
+/** 背景画像を、はみ出す部分を切り取って画面いっぱいに合わせる */
+export function prepareBackground(image: Illustration | null, width: number, height: number): HTMLCanvasElement | null {
+  if (!image) return null;
+  const canvas = makeCanvas(Math.max(1, Math.round(width)), Math.max(1, Math.round(height)));
+  const ctx = canvas.getContext('2d')!;
+  const scale = Math.max(canvas.width / image.width, canvas.height / image.height);
+  const w = image.width * scale;
+  const h = image.height * scale;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(image.image, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+  return canvas;
+}
 
 const GLINT_COLORS = ['#ffffff', '#fff3a0', '#ffc6ea', '#bff4ff', '#e2d4ff'];
 const STAR_COLORS = ['#ffd93b', '#ff5fa2', '#4fd8ff', '#a4f23b', '#a57bff', '#ff9a3d'];
@@ -117,7 +132,9 @@ export function renderFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: numb
 
   ctx.save();
   if (clear) ctx.clearRect(0, 0, W, H);
-  if (clear && background !== 'transparent') {
+  if (clear && background === 'image') {
+    if (assets.background) ctx.drawImage(assets.background, 0, 0, W, H);
+  } else if (clear && background !== 'transparent') {
     ctx.fillStyle = background;
     ctx.fillRect(0, 0, W, H);
   }

@@ -121,6 +121,40 @@
   cursor: not-allowed;
 }
 
+.bgImage {
+  background: linear-gradient(135deg, #bff4ff, #ffd3e6);
+}
+
+.bgImageRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.bgThumb {
+  width: 120px;
+  height: 68px;
+  object-fit: cover;
+  border: var(--line-thin);
+  border-radius: var(--radius-s);
+}
+
+.smallButton {
+  min-height: 44px;
+  padding: 0 14px;
+  font-weight: 800;
+  font-size: 0.85rem;
+  background: var(--paper);
+  border: var(--line-thin);
+  border-radius: 999px;
+}
+
+.smallButton:hover {
+  background: var(--yellow);
+}
+
 .bgTransparent {
   background: repeating-conic-gradient(#e3e6ee 0 25%, #ffffff 0 50%) 0 0 / 12px 12px;
 }

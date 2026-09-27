@@ -52,7 +52,7 @@ export type OutputSettings = {
   fps: 30 | 60;
   /** 絵が流れ出てくる時間（秒）。このあと、残った絵が流れ切るまでの時間が足されます */
   seconds: 3 | 5 | 8 | 12;
-  /** 背景。'transparent' は WebM のときだけ */
+  /** 背景。'transparent' = 透過（WebM のみ）/ 'image' = 背景画像 / それ以外は色（#00ff00 など） */
   background: string;
   /** 乱数の種。変えると流れ方のパターンが変わる */
   seed: number;

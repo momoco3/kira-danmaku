@@ -13,13 +13,14 @@ import { StickyGenerateBar } from './components/StickyGenerateBar';
 import { makeFileName } from './lib/download';
 import { bitrateFor, detectSupport, encodeVideo } from './lib/encodeVideo';
 import { isSupportedImage, loadIllustration, releaseImage } from './lib/loadImages';
-import { prepareAssets, renderFrame, sizeOf } from './lib/renderer';
+import { prepareAssets, prepareBackground, renderFrame, sizeOf } from './lib/renderer';
 import { buildScene } from './lib/scene';
 import { DEFAULT_SETTINGS, findFeverPreset } from './presets';
 import type { FlowSettings, Illustration, OutputSettings, Settings, SparkleSettings } from './types';
 
 export default function App() {
   const [images, setImages] = useState<Illustration[]>([]);
+  const [backgroundImage, setBackgroundImage] = useState<Illustration | null>(null);
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
@@ -51,7 +52,7 @@ export default function App() {
   const estimatedBytes = ((bitrateFor(width, height, settings.output.fps) * scene.totalSeconds) / 8) * (transparentWebm ? 1.8 : 1);
   const activePreset = findFeverPreset(settings);
 
-  const source = useMemo(() => ({ images, settings }), [images, settings]);
+  const source = useMemo(() => ({ images, settings, backgroundImage }), [images, settings, backgroundImage]);
   const currentResult = result && result.source === source ? result : null;
 
   // 07 Export が見えていないときだけ、スマホで下に固定ボタンを出す
@@ -98,6 +99,26 @@ export default function App() {
     });
   };
 
+  const setBackgroundFile = async (file: File) => {
+    if (!isSupportedImage(file)) {
+      setNotice(`${file.name} は背景に使えません（PNG / JPG / WebP に対応しています）`);
+      return;
+    }
+    try {
+      const image = await loadIllustration(file);
+      releaseImage(backgroundImage);
+      setBackgroundImage(image);
+    } catch {
+      setNotice(`${file.name} を読み込めませんでした`);
+    }
+  };
+
+  const removeBackground = () => {
+    releaseImage(backgroundImage);
+    setBackgroundImage(null);
+    updateOutput({ background: '#00ff00' });
+  };
+
   const updateFlow = (patch: Partial<FlowSettings>) => setSettings((s) => ({ ...s, flow: { ...s.flow, ...patch } }));
   const updateSparkle = (patch: Partial<SparkleSettings>) => setSettings((s) => ({ ...s, sparkle: { ...s.sparkle, ...patch } }));
   const updateOutput = (patch: Partial<OutputSettings>) => setSettings((s) => ({ ...s, output: { ...s.output, ...patch } }));
@@ -108,7 +129,10 @@ export default function App() {
     setProgress(0);
     setError(null);
     try {
-      const assets = prepareAssets(images, height * settings.flow.sizeMax);
+      const assets = {
+        ...prepareAssets(images, height * settings.flow.sizeMax),
+        background: prepareBackground(backgroundImage, width, height),
+      };
       const blob = await encodeVideo(
         {
           format: settings.output.format,
@@ -152,7 +176,7 @@ export default function App() {
           </Panel>
 
           <Panel id="preview" title="02 Preview" color="var(--yellow)">
-            <PreviewPlayer scene={scene} images={images} settings={settings} />
+            <PreviewPlayer scene={scene} images={images} settings={settings} backgroundImage={backgroundImage} />
           </Panel>
 
           <Panel id="fever" title="03 Fever" color="var(--pink)" hint="どれくらいフィーバーさせるか。選んだあと下で細かく調整できます">
@@ -174,7 +198,16 @@ export default function App() {
           </div>
 
           <Panel id="output" title="06 Output" color="var(--purple)">
-            <OutputControls output={settings.output} onChange={updateOutput} support={support} totalSeconds={scene.totalSeconds} estimatedBytes={estimatedBytes} />
+            <OutputControls
+              output={settings.output}
+              onChange={updateOutput}
+              support={support}
+              totalSeconds={scene.totalSeconds}
+              estimatedBytes={estimatedBytes}
+              backgroundImage={backgroundImage}
+              onBackgroundFile={setBackgroundFile}
+              onRemoveBackground={removeBackground}
+            />
           </Panel>
 
           <Panel id="export" title="07 Export" color="var(--orange)">

@@ -1,8 +1,9 @@
 // 設定エリアの中身（フィーバー度のプリセット・流れ方・キラキラ・書き出し）です。
-import type { CSSProperties } from 'react';
+import { useRef, type CSSProperties } from 'react';
+import { ACCEPT_ATTRIBUTE } from '../lib/loadImages';
 import { formatBytes } from '../lib/estimate';
 import { CURVES, FEVER_PRESETS, type FeverPreset } from '../presets';
-import type { Curve, FlowSettings, OutputSettings, SizePreset, SparkleSettings, SparkleStyle } from '../types';
+import type { Curve, FlowSettings, Illustration, OutputSettings, SizePreset, SparkleSettings, SparkleStyle } from '../types';
 import { ChoiceButtons, Slider, Switch } from './Controls';
 import styles from './SettingsPanels.module.css';
 
@@ -117,10 +118,19 @@ type OutputProps = {
   support: { webmTransparent: boolean; webm: boolean; mp4: boolean } | null;
   totalSeconds: number;
   estimatedBytes: number;
+  backgroundImage: Illustration | null;
+  onBackgroundFile: (file: File) => void;
+  onRemoveBackground: () => void;
 };
 
-export function OutputControls({ output, onChange, support, totalSeconds, estimatedBytes }: OutputProps) {
+export function OutputControls({ output, onChange, support, totalSeconds, estimatedBytes, backgroundImage, onBackgroundFile, onRemoveBackground }: OutputProps) {
   const transparent = output.format === 'webm' && output.background === 'transparent';
+  const fileRef = useRef<HTMLInputElement>(null);
+  const chooseImage = () => {
+    // 画像がまだなければ選んでもらう。背景画像の動画はどこでも使える MP4 にしておく
+    if (!backgroundImage) fileRef.current?.click();
+    else onChange({ background: 'image', format: 'mp4' });
+  };
   return (
     <div className={styles.stack}>
       <div>
@@ -171,11 +181,49 @@ export function OutputControls({ output, onChange, support, totalSeconds, estima
               {bg.label}
             </button>
           ))}
+          <button type="button" className={`${styles.bg} ${styles.bgImage}`} aria-pressed={output.background === 'image'} onClick={chooseImage}>
+            🖼 画像
+          </button>
         </div>
+        {output.background === 'image' && (
+          <div className={styles.bgImageRow}>
+            {backgroundImage ? (
+              <img src={backgroundImage.url} alt={`背景画像: ${backgroundImage.name}`} className={styles.bgThumb} />
+            ) : (
+              <span className={styles.note}>背景画像がまだ選ばれていません</span>
+            )}
+            <button type="button" className={styles.smallButton} onClick={() => fileRef.current?.click()}>
+              {backgroundImage ? '画像を変える' : '画像を選ぶ'}
+            </button>
+            {backgroundImage && (
+              <button type="button" className={styles.smallButton} onClick={onRemoveBackground}>
+                外す
+              </button>
+            )}
+          </div>
+        )}
+        <input
+          ref={fileRef}
+          className="visually-hidden"
+          type="file"
+          accept={ACCEPT_ATTRIBUTE}
+          tabIndex={-1}
+          aria-hidden="true"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) {
+              onBackgroundFile(file);
+              onChange({ background: 'image', format: 'mp4' });
+            }
+            event.target.value = '';
+          }}
+        />
         <p className={styles.note}>
           {transparent
             ? 'OBS では「メディアソース」で追加すると、絵だけが配信画面に重なります。'
-            : 'グリーン / ブルーは、配信ソフトの「クロマキー」で背景を抜いて使えます。'}
+            : output.background === 'image'
+              ? '背景画像は画面いっぱいに合わせます（はみ出す部分は切り取り）。'
+              : 'グリーン / ブルーは、配信ソフトの「クロマキー」で背景を抜いて使えます。'}
         </p>
       </div>
 
