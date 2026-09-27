@@ -1,0 +1,96 @@
+.app {
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 0 16px 40px;
+}
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 44px;
+  margin-top: 40px;
+}
+
+.twoColumns {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 44px;
+}
+
+@media (min-width: 820px) {
+  .twoColumns {
+    grid-template-columns: 1fr 1fr;
+    gap: 22px;
+  }
+}
+
+.count {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-right: auto;
+  font-weight: 900;
+}
+
+.smallButton {
+  min-height: 44px;
+  padding: 0 14px;
+  font-weight: 800;
+  font-size: 0.88rem;
+  background: var(--paper);
+  border: var(--line-thin);
+  border-radius: 999px;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+
+.smallButton:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: var(--shadow-s);
+}
+
+.notice {
+  margin: 12px 0 0;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  background: #fff5d6;
+  border: var(--line-thin);
+  border-radius: var(--radius-s);
+}
+
+.stripHint {
+  margin: 16px 0 2px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-soft);
+}
+
+.footer {
+  margin-top: 48px;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--text-soft);
+}
+
+.footer p {
+  margin: 0 0 6px;
+}
+
+.footerSmall {
+  font-weight: 800;
+}
+
+/* スマホでは下固定の Generate ボタンにフッターが隠れないよう余白を足す */
+@media (max-width: 720px) {
+  .app {
+    padding-bottom: 110px;
+  }
+}
+
+@media (max-width: 480px) {
+  .app {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}

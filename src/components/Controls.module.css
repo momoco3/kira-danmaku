@@ -1,0 +1,227 @@
+/* ---- 選択ボタン群 ---- */
+.choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: 8px;
+}
+
+.fixedColumns {
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+}
+
+@media (max-width: 420px) {
+  .fixedColumns {
+    grid-template-columns: repeat(var(--narrow-cols), minmax(0, 1fr));
+  }
+}
+
+.choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-height: 48px;
+  min-width: 0;
+  padding: 6px 8px;
+  background: var(--paper);
+  border: var(--line-thin);
+  border-radius: var(--radius-s);
+  font-weight: 800;
+  transition:
+    transform 0.12s,
+    box-shadow 0.12s,
+    background-color 0.12s;
+}
+
+.choice:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: var(--shadow-s);
+}
+
+.choice[aria-pressed='true'] {
+  background: var(--pink);
+  box-shadow: var(--shadow-s);
+  transform: translate(-1px, -1px);
+}
+
+.choice:disabled {
+  opacity: 0.45;
+  border-style: dashed;
+}
+
+.choiceLabel {
+  font-size: 0.95rem;
+  line-height: 1.15;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.choiceSub {
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text-soft);
+  text-align: center;
+}
+
+.choice[aria-pressed='true'] .choiceSub {
+  color: var(--ink);
+}
+
+/* ---- ON/OFF スイッチ ---- */
+.switchRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 60px;
+  padding: 10px 14px;
+  text-align: left;
+  background: var(--paper);
+  border: var(--line-thin);
+  border-radius: var(--radius-m);
+  transition: box-shadow 0.12s, transform 0.12s;
+}
+
+.switchRow:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: var(--shadow-s);
+}
+
+.switchIcon {
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.switchText {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.switchLabel {
+  font-weight: 800;
+}
+
+.switchDescription {
+  font-size: 0.8rem;
+  color: var(--text-soft);
+}
+
+.switchTrack {
+  position: relative;
+  flex: none;
+  width: 56px;
+  height: 32px;
+  background: #e4e4ea;
+  border: var(--line-thin);
+  border-radius: 999px;
+  transition: background-color 0.15s;
+}
+
+.switchThumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  background: var(--paper);
+  border: var(--line-thin);
+  border-radius: 50%;
+  transition: transform 0.15s;
+}
+
+.switchRow[aria-checked='true'] .switchTrack {
+  background: var(--sky);
+}
+
+.switchRow[aria-checked='true'] .switchThumb {
+  transform: translateX(24px);
+}
+
+/* ---- スライダー ---- */
+.slider {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sliderHead {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+}
+
+.sliderLabel {
+  font-weight: 900;
+}
+
+.sliderDescription {
+  font-size: 0.78rem;
+  color: var(--text-soft);
+}
+
+.sliderValue {
+  margin-left: auto;
+  min-width: 48px;
+  padding: 0 8px;
+  font-size: 0.8rem;
+  font-weight: 900;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  background: var(--paper);
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+}
+
+.slider input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.slider input[type='range']::-webkit-slider-runnable-track {
+  height: 14px;
+  background: linear-gradient(to right, var(--accent) var(--fill), #e8eaf0 var(--fill));
+  border: var(--line-thin);
+  border-radius: 999px;
+}
+
+.slider input[type='range']::-moz-range-track {
+  height: 10px;
+  background: linear-gradient(to right, var(--accent) var(--fill), #e8eaf0 var(--fill));
+  border: var(--line-thin);
+  border-radius: 999px;
+}
+
+.slider input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 30px;
+  height: 30px;
+  margin-top: -10px;
+  background: var(--paper);
+  border: var(--line);
+  border-radius: 50%;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.slider input[type='range']::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  background: var(--paper);
+  border: var(--line);
+  border-radius: 50%;
+}
+
+.slider input[type='range']:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}

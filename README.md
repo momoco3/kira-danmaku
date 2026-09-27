@@ -1,0 +1,158 @@
+# キラ弾幕（KiraDanmaku）
+
+**Make a sparkly illustration barrage (danmaku) video for streams — right in your browser.**
+イラストを入れると、キラキラしながら右から左へドバッと流れる「弾幕」動画が作れるツールです。
+
+> 🔒 **Uploaded images are processed locally in your browser and are not uploaded to a server.**
+> 読み込んだ画像はすべてお使いのブラウザの中だけで処理され、サーバーには一切送信されません。
+
+<img src="docs/screenshot.png" alt="キラ弾幕の画面" width="800">
+
+<sub>※ スクリーンショットの星のステッカーはサンプル用に描いたものです。</sub>
+
+---
+
+## どんなときに使う？
+
+配信で「わたしすげーー！！」と叫んだ瞬間に、自分のイラストがニコニコの弾幕みたいに画面を流れていく——そんな演出用の動画を作ります。
+
+- 最初は少なく → すぐ大量 → 最後にまた少なく、と自然に盛り上がって引いていきます
+- 絵のうしろに光の粒の尾、ときどき「キラーン」、画面全体にも星がまたたきます
+- **背景透過の WebM** で書き出せるので、OBS などの配信ソフトにそのまま重ねられます
+- **グリーンバックの MP4** も作れます（どのソフトでもクロマキーで抜いて使えます）
+
+## 主な機能
+
+| 機能 | 内容 |
+| --- | --- |
+| イラスト | 何枚でも。ランダムに混ざって流れます（透明背景の PNG / WebP がおすすめ） |
+| フィーバー度 | ちょいフィーバー / フィーバー / 超フィーバー / 限界突破 のプリセット＋スライダー |
+| 盛り上がり方 | ドカン（すぐ大量→長めに続く）/ じわじわ / 一瞬 / 波 |
+| 流れ方 | 速さ・大きさ・大きさのバラつき・ゆらゆら・くるくる・向き（右→左 / 左→右） |
+| キラキラ | 量、ふんわり光る（絵のまわりの光）、画面全体の星 |
+| プレビュー | 書き出しと同じ動き。量のグラフの上をドラッグして好きな時刻を確認 |
+| パターン | 「流れ方のパターンを変える」で配置だけを変えられます |
+| 書き出し | WebM（背景透過 or 色）/ MP4（背景色）、1920×1080・1280×720・縦長・正方形、30 / 60fps |
+
+## 使い方
+
+1. **01 Images** にイラストを入れる
+2. **03 Fever** でフィーバー度を選ぶ（**04 Flow** / **05 Sparkle** で細かく調整）
+3. **06 Output** で形式・背景・サイズ・長さを選ぶ
+4. 「Generate」→「Download」
+
+### OBS で使うには
+
+- **透過 WebM**: ソースに「メディアソース」を追加してファイルを選ぶだけで、絵だけが配信画面に重なります。
+  「ループ」はオフ、「ソースがアクティブになったときに再生を再開する」をオンにしておくと、シーンやソースの表示を切り替えるたびに最初から流れます（ホットキーで表示の切り替えを割り当てると便利です）。
+- **グリーンバック MP4**: 同じく「メディアソース」で追加し、フィルタの「クロマキー」で緑を抜きます。
+
+### ブラウザ対応
+
+| 形式 | PC の Chrome / Edge | Firefox | Safari / iPhone |
+| --- | --- | --- | --- |
+| WebM（背景透過） | ✅ | ブラウザ次第 | ❌ |
+| MP4（背景色） | ✅ | ✅（新しい版） | ✅ |
+
+背景透過の WebM は「色の映像」と「透明度の映像」の2本をブラウザ標準の WebCodecs（VP9）で作り、
+自作の WebM 書き出し（`src/lib/webmWriter.ts`）で1つのファイルにまとめています。
+
+---
+
+## ローカルで動かす
+
+[Node.js](https://nodejs.org/)（v20 以上、推奨 v22）が必要です。
+
+```bash
+npm install
+```
+
+```bash
+npm run dev
+```
+
+### ビルド・公開
+
+```bash
+npm run build
+```
+
+`dist/` が公開用ファイルです。`main` に push すると `.github/workflows/deploy.yml` が GitHub Pages に自動公開します（初回だけ Settings → Pages → Source を「GitHub Actions」に）。
+
+---
+
+## どこを編集すればいい？
+
+| やりたいこと | 編集するファイル |
+| --- | --- |
+| フィーバー度のプリセット・最初の設定 | `src/presets.ts` |
+| 全体の量（1秒あたりの最大枚数など） | `src/lib/scene.ts` の `PEAK_RATE_MAX` など |
+| 盛り上がり方の形 | `src/lib/scene.ts` の `curveShape` |
+| 流れる速さの範囲 | `src/lib/scene.ts` の `CROSS_TIME_SLOW` / `CROSS_TIME_FAST` |
+| キラキラの色・形 | `src/lib/renderer.ts` の `GLINT_COLORS` / `makeGlint` |
+| 画質（ビットレート） | `src/lib/encodeVideo.ts` の `bitrateFor` |
+| 色 | `src/index.css` の `:root` |
+
+### ファイル構成
+
+```
+kira-danmaku/
+├─ index.html / vite.config.ts / package.json
+├─ public/favicon.svg
+├─ docs/                     … README 用スクリーンショット
+├─ .github/workflows/deploy.yml … GitHub Pages 自動公開
+└─ src/
+   ├─ App.tsx                … 画面の構成と状態管理
+   ├─ types.ts / presets.ts  … データの形・プリセット・初期設定
+   ├─ components/
+   │  ├─ ImageList.tsx       … イラストの読み込み
+   │  ├─ PreviewPlayer.tsx   … プレビュー・量のグラフ・シーク
+   │  ├─ SettingsPanels.tsx  … フィーバー度・流れ方・キラキラ・書き出し設定
+   │  ├─ ExportPanel.tsx / StickyGenerateBar.tsx … 生成・保存
+   │  └─ Panel / Controls / Stickers / Header … 共通の部品
+   └─ lib/
+      ├─ scene.ts            … 弾幕の台本（いつ・どこに・どの速さで流れるか）
+      ├─ renderer.ts         … 1コマの描画（絵・光・キラキラ）
+      ├─ encodeVideo.ts      … WebM / MP4 の書き出し
+      ├─ webmWriter.ts       … WebM ファイルの組み立て（背景透過対応）
+      └─ loadImages.ts / download.ts / estimate.ts
+```
+
+---
+
+## 利用ライブラリとライセンス
+
+### アプリに含まれるもの
+
+| パッケージ | 用途 | ライセンス |
+| --- | --- | --- |
+| [react](https://github.com/facebook/react) / react-dom（＋依存の scheduler） | 画面の構築 | MIT |
+| [mp4-muxer](https://github.com/Vanilagy/mp4-muxer)（＋型定義のみの依存 @types/dom-webcodecs 等） | MP4 ファイルの組み立て | MIT |
+| [@fontsource/dela-gothic-one](https://fontsource.org/fonts/dela-gothic-one) | ロゴ・見出しのフォント | OFL-1.1（フォント） |
+
+- 動画の圧縮はブラウザ標準の WebCodecs（VP9 / H.264）です
+- WebM の組み立ては自作（`src/lib/webmWriter.ts`）です
+- GPL 系のライブラリは使っていません
+
+### 開発時のみ（アプリには含まれません）
+
+| パッケージ | 用途 | ライセンス |
+| --- | --- | --- |
+| vite / @vitejs/plugin-react | 開発サーバー・ビルド | MIT |
+| typescript | 型チェック | Apache-2.0 |
+| @types/react / @types/react-dom / @types/node | 型定義 | MIT |
+| oxlint | コードチェック | MIT |
+
+## プライバシー
+
+- **Uploaded images are processed locally in your browser and are not uploaded to a server.**
+- 外部への通信・解析ツール・広告・Cookie はありません。フォントも同梱です
+
+## 関連ツール
+
+- [FrameBop](https://github.com/momoco3/framebop) … 画像を並べて GIF アニメを作る
+- [Yurapoyo](https://github.com/momoco3/yurapoyo) … 絵2枚でまばたき＆ゆらゆらループ
+
+## ライセンス
+
+[MIT License](./LICENSE)

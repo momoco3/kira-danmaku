@@ -1,0 +1,108 @@
+/* アプリ全体の色・フォント・基本スタイル。
+   色を変えたいときは :root の値を変更してください。 */
+:root {
+  /* メインカラー */
+  --cyan: #19e0ee;
+  --sky: #3aa8ff;
+  --pink: #ff4fae;
+  --magenta: #e22ad6;
+  --yellow: #f4ff3a;
+  --lime: #a4f23b;
+  /* 補助色 */
+  --purple: #8b5cff;
+  --orange: #ff9a2e;
+  --ink: #121216;
+  --paper: #ffffff;
+
+  --bg: #f2fbff;
+  --text: var(--ink);
+  --text-soft: #4a4a57;
+  --line: 3px solid var(--ink);
+  --line-thin: 2px solid var(--ink);
+  --radius-l: 28px;
+  --radius-m: 18px;
+  --radius-s: 12px;
+  --shadow: 5px 5px 0 var(--ink);
+  --shadow-s: 3px 3px 0 var(--ink);
+  --focus: #1f4dff;
+
+  --font-display: 'Dela Gothic One', 'Arial Black', system-ui, sans-serif;
+  --font-body: system-ui, -apple-system, 'Segoe UI', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN',
+    'Noto Sans JP', Meiryo, sans-serif;
+
+  color-scheme: light;
+  font-family: var(--font-body);
+  color: var(--text);
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  /* 横スクロールを出さない（フレーム一覧だけは個別にスクロール可） */
+  overflow-x: clip;
+}
+
+body {
+  min-height: 100dvh;
+  background-color: var(--bg);
+  /* うっすらドット柄 */
+  background-image: radial-gradient(rgba(18, 18, 22, 0.08) 1.2px, transparent 1.3px);
+  background-size: 18px 18px;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

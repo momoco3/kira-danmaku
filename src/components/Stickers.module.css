@@ -1,0 +1,84 @@
+.splashes {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.splash {
+  position: absolute;
+  width: min(42vw, 420px);
+  height: auto;
+  opacity: 0.55;
+}
+
+.topLeft {
+  top: -8vw;
+  left: -10vw;
+}
+
+.topRight {
+  top: 18vh;
+  right: -14vw;
+  opacity: 0.4;
+}
+
+.bottomLeft {
+  bottom: -6vw;
+  left: -12vw;
+  opacity: 0.5;
+}
+
+.bottomRight {
+  bottom: -10vw;
+  right: -8vw;
+  opacity: 0.45;
+}
+
+.floatStar,
+.floatBolt,
+.floatSparkle {
+  position: absolute;
+  animation: bob 4s ease-in-out infinite;
+}
+
+.floatStar {
+  top: 14vh;
+  left: 6vw;
+}
+
+.floatBolt {
+  top: 58vh;
+  right: 5vw;
+  animation-delay: -1.3s;
+}
+
+.floatSparkle {
+  bottom: 12vh;
+  left: 8vw;
+  animation-delay: -2.6s;
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-6deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(6deg);
+  }
+}
+
+/* スマホでは中身を邪魔しないよう控えめに */
+@media (max-width: 720px) {
+  .splash {
+    width: 60vw;
+    opacity: 0.3;
+  }
+  .floatStar,
+  .floatBolt,
+  .floatSparkle {
+    display: none;
+  }
+}

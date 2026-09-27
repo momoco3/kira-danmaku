@@ -1,0 +1,90 @@
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 28px 0 8px;
+  text-align: center;
+}
+
+.logoWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.logo {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(2.4rem, 11vw, 4.2rem);
+  line-height: 1;
+  letter-spacing: 0.01em;
+  transform: rotate(-3deg);
+}
+
+.logoFrame,
+.logoBop {
+  display: inline-block;
+  -webkit-text-stroke: 3px var(--ink);
+  paint-order: stroke fill;
+  text-shadow: 4px 4px 0 var(--ink);
+}
+
+.logoFrame {
+  color: var(--cyan);
+}
+
+.logoBop {
+  margin-left: 0.04em;
+  color: var(--pink);
+  transform: rotate(4deg) translateY(4px);
+}
+
+.star {
+  transform: rotate(-14deg) translateY(-18px);
+}
+
+.bolt {
+  transform: rotate(12deg) translateY(14px);
+}
+
+.tagline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 0;
+  padding: 6px 14px;
+  font-weight: 800;
+  background: var(--yellow);
+  border: var(--line-thin);
+  border-radius: 999px;
+  box-shadow: var(--shadow-s);
+  transform: rotate(1.5deg);
+}
+
+.privacy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-soft);
+}
+
+.lock {
+  font-size: 0.9rem;
+}
+
+@media (max-width: 400px) {
+  .tagline {
+    font-size: 0.86rem;
+  }
+  .star,
+  .bolt {
+    width: 22px;
+    height: 22px;
+  }
+}
