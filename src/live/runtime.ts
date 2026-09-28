@@ -5,6 +5,7 @@
 // このファイルは vite.live.config.ts で1つの JS にまとめられ、HTML に埋め込まれます。
 import { prepareAssets, renderFrame, type ArtSource, type TextSources } from '../lib/renderer';
 import { buildScene, phraseHeight, type Scene } from '../lib/scene';
+import { textInfo } from '../lib/textArt';
 import type { Illustration, Settings } from '../types';
 
 export type LiveConfig = {
@@ -48,7 +49,7 @@ async function start() {
         bannerLines: config.text.bannerLines,
       }
     : null;
-  const textCount = text?.phrases.length ?? 0;
+  const sceneText = text ? textInfo(text) : undefined;
 
   // 配信ソフトの上では背景はいつも透明
   const settings: Settings = { ...config.settings, output: { ...config.settings.output, background: 'transparent' } };
@@ -60,7 +61,7 @@ async function start() {
     height = Math.max(1, Math.round(window.innerHeight));
     canvas.width = width;
     canvas.height = height;
-    assets = prepareAssets(illustrations, height * settings.flow.sizeMax, { sources: text, phraseHeight: phraseHeight(settings, height) });
+    assets = prepareAssets(illustrations, height * settings.flow.sizeMax, { sources: text, phraseHeight: phraseHeight(settings, width, height, sceneText?.banner) });
   };
   resize();
   window.addEventListener('resize', resize);
@@ -84,7 +85,7 @@ async function start() {
   const fire = () => {
     const seed = Math.floor(Math.random() * 1e9) + 1;
     const waveSettings: Settings = { ...settings, output: { ...settings.output, seed } };
-    waves.push({ scene: buildScene(waveSettings, illustrations.length, width, height, textCount), startedAt: performance.now(), settings: waveSettings });
+    waves.push({ scene: buildScene(waveSettings, illustrations.length, width, height, sceneText), startedAt: performance.now(), settings: waveSettings });
     hint?.classList.add('hidden');
     if (!running) {
       running = true;

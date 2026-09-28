@@ -14,8 +14,8 @@ import { makeFileName } from './lib/download';
 import { bitrateFor, detectSupport, encodeVideo } from './lib/encodeVideo';
 import { isSupportedImage, loadIllustration, releaseImage } from './lib/loadImages';
 import { prepareAssets, prepareBackground, renderFrame, sizeOf } from './lib/renderer';
-import { buildScene, phraseHeight } from './lib/scene';
-import { makeTextArt, toTextSources, type TextArt } from './lib/textArt';
+import { buildScene } from './lib/scene';
+import { makeTextArt, textInfo, toTextSources, type TextArt } from './lib/textArt';
 import { DEFAULT_SETTINGS, findFeverPreset } from './presets';
 import type { FlowSettings, Illustration, OutputSettings, Settings, SparkleSettings, TextSettings } from './types';
 
@@ -63,8 +63,8 @@ export default function App() {
   const canMake = images.length > 0 || hasText;
 
   const { width, height } = sizeOf(settings.output.size);
-  const textCount = textArt?.phrases.length ?? 0;
-  const scene = useMemo(() => buildScene(settings, images.length, width, height, textCount), [settings, images.length, width, height, textCount]);
+  const sceneText = useMemo(() => textArt && textInfo(textArt), [textArt]);
+  const scene = useMemo(() => buildScene(settings, images.length, width, height, sceneText ?? undefined), [settings, images.length, width, height, sceneText]);
   // 透過 WebM は「透明度の映像」が別に入るぶん大きくなる
   const transparentWebm = settings.output.format === 'webm' && settings.output.background === 'transparent';
   const estimatedBytes = ((bitrateFor(width, height, settings.output.fps) * scene.totalSeconds) / 8) * (transparentWebm ? 1.8 : 1);
@@ -149,7 +149,7 @@ export default function App() {
     setError(null);
     try {
       const assets = {
-        ...prepareAssets(images, height * settings.flow.sizeMax, { sources: textSources, phraseHeight: phraseHeight(settings, height) }),
+        ...prepareAssets(images, height * settings.flow.sizeMax, { sources: textSources, phraseHeight: scene.phraseHeight }),
         background: prepareBackground(backgroundImage, width, height),
       };
       const blob = await encodeVideo(

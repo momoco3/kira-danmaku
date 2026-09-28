@@ -3,6 +3,7 @@
 // 一度画像にしておくので、プレビュー・書き出し・生配信モードで同じ見た目になります。
 import type { TextColor, TextSettings } from '../types';
 import type { TextSources } from './renderer';
+import type { SceneText } from './scene';
 
 const FONT_FAMILY = '"Dela Gothic One", "Arial Black", "Hiragino Sans", "Noto Sans JP", sans-serif';
 /** 文字の大きさ（px）。大きめに作って、使うときに縮める */
@@ -125,4 +126,13 @@ export function toTextSources(art: TextArt | null): TextSources | null {
   if (!art) return null;
   const source = (c: HTMLCanvasElement) => ({ image: c, width: c.width, height: c.height });
   return { phrases: art.phrases.map(source), banner: art.banner && source(art.banner), bannerLines: art.bannerLines };
+}
+
+/** 台本づくりに使う文字の情報 */
+export function textInfo(art: TextArt | TextSources): SceneText {
+  const banner = art.banner;
+  return {
+    count: art.phrases.length,
+    banner: banner ? { aspect: banner.width / banner.height, lines: art.bannerLines } : null,
+  };
 }

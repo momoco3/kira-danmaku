@@ -115,7 +115,7 @@ npm run build
 | 流れる速さの範囲 | `src/lib/scene.ts` の `CROSS_TIME_SLOW` / `CROSS_TIME_FAST` |
 | キラキラの色・形 | `src/lib/renderer.ts` の `GLINT_COLORS` / `makeGlint`（光）、`STAR_COLORS` / `makeStar`（イラスト星） |
 | 文字の見た目（色・ふち） | `src/lib/textArt.ts` の `RAINBOW` / `drawText` |
-| 下に固定する文字の大きさ・シェイクの強さ | `src/lib/scene.ts` の `bannerPose` |
+| 下に固定する文字の大きさ / 流れる文字の大きさ / シェイクの強さ | `src/lib/scene.ts` の `bannerBox` / `phraseHeight` / `bannerPose` |
 | 画質（ビットレート） | `src/lib/encodeVideo.ts` の `bitrateFor` |
 | 色 | `src/index.css` の `:root` |
 

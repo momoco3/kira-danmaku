@@ -2,7 +2,7 @@
 // 下のグラフは「いつ、どれくらい流れるか」。ドラッグで好きな時刻を見られます。
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { prepareAssets, prepareBackground, renderFrame, type TextSources } from '../lib/renderer';
-import { phraseHeight, type Scene } from '../lib/scene';
+import type { Scene } from '../lib/scene';
 import type { Illustration, Settings } from '../types';
 import styles from './PreviewPlayer.module.css';
 import { PauseIcon, PlayIcon, RestartIcon } from './Stickers';
@@ -29,7 +29,7 @@ export function PreviewPlayer({ scene, images, textSources, settings, background
   const height = Math.round(scene.height * scale);
   const pixelRatio = scale * Math.min(2, window.devicePixelRatio || 1);
   const spriteHeight = scene.height * settings.flow.sizeMax * pixelRatio;
-  const textHeight = phraseHeight(settings, scene.height) * pixelRatio;
+  const textHeight = scene.phraseHeight * pixelRatio;
   const assets = useMemo(
     () => ({
       ...prepareAssets(images, spriteHeight, { sources: textSources, phraseHeight: textHeight }),

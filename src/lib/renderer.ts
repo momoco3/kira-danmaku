@@ -272,7 +272,7 @@ export function renderFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: numb
 
   // ---- 下に固定する文字（いちばん手前） ----
   const banner = assets.banner;
-  const bp = banner && bannerPose(t, scene, settings, banner.aspect, banner.lines);
+  const bp = banner && bannerPose(t, scene, settings, banner.aspect);
   if (banner && bp && bp.scale > 0.01) {
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = bp.alpha;

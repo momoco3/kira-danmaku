@@ -33,6 +33,8 @@ export type Scene = {
   totalSeconds: number;
   /** 量のグラフ用: 各時刻の「出てくる勢い」（0〜1） */
   envelope: (t: number) => number;
+  /** 一緒に流す文字の高さ（px） */
+  phraseHeight: number;
 };
 
 // 量の最大・最小（1秒あたりに出てくる枚数）。数字を変えると全体の量が変わります
@@ -68,17 +70,40 @@ export function curveShape(curve: Curve, u: number): number {
   }
 }
 
-/** 一緒に流す文字の高さ（px、ふちこみ） */
-export function phraseHeight(settings: Settings, height: number) {
-  return height * (0.07 + 0.09 * settings.text.size);
+/** 文字の数と、下に固定する文字の画像の形（横/縦・行数） */
+export type SceneText = { count: number; banner: { aspect: number; lines: number } | null };
+
+/**
+ * 下に固定する文字の大きさ（px、ふちこみ）。
+ * 画面の下 1/3 くらいを埋める大きさにして、横にはみ出すときだけ縮める
+ */
+export function bannerBox(settings: Settings, width: number, height: number, aspect: number) {
+  const h = height * (0.18 + 0.16 * settings.text.size);
+  const w = h * aspect;
+  // 揺れや弾みではみ出さないよう、横は少し余白を残す
+  const fit = Math.min(1, (width * 0.88) / w);
+  return { w: w * fit, h: h * fit };
 }
 
 /**
- * @param textCount 一緒に流す文字の数（0 なら文字は流れない）
+ * 一緒に流す文字の高さ（px、ふちこみ）。
+ * 縦長の画面でも大きくなりすぎないよう、短いほうの辺に合わせる。
+ * 下に固定する文字があるときは、それより必ず小さく（1行の半分くらいまで）する
  */
-export function buildScene(settings: Settings, imageCount: number, width: number, height: number, textCount = 0): Scene {
+export function phraseHeight(settings: Settings, width: number, height: number, banner: SceneText['banner'] = null) {
+  const h = Math.min(width, height) * (0.06 + 0.08 * settings.text.size);
+  if (settings.text.bottom === 'off' || !banner) return h;
+  const bannerLine = bannerBox(settings, width, height, banner.aspect).h / banner.lines;
+  return Math.min(h, bannerLine * 0.55);
+}
+
+/**
+ * @param text 一緒に流す文字の数など（なければ文字は流れない）
+ */
+export function buildScene(settings: Settings, imageCount: number, width: number, height: number, text?: SceneText): Scene {
   const { flow, output } = settings;
-  if (!settings.text.flow) textCount = 0;
+  const textCount = settings.text.flow ? (text?.count ?? 0) : 0;
+  const textHeight = phraseHeight(settings, width, height, text?.banner);
   // 文字の割合。絵がないときは文字だけ流す
   const textShare = imageCount === 0 ? 1 : 0.6 * settings.text.amount;
   const random = createRandom(output.seed * 7919 + 17);
@@ -107,7 +132,7 @@ export function buildScene(settings: Settings, imageCount: number, width: number
       // 小さめの絵を多めに（奥行きが出る）
       const sizeT = Math.pow(random(), 1.8);
       const size = isText
-        ? phraseHeight(settings, height) * (0.8 + 0.4 * sizeT)
+        ? textHeight * (0.8 + 0.4 * sizeT)
         : height * (flow.sizeMin + (flow.sizeMax - flow.sizeMin) * sizeT);
       let lane = Math.floor(random() * lanes);
       if (lane === lastLane) lane = (lane + 1 + Math.floor(random() * (lanes - 1))) % lanes;
@@ -136,7 +161,7 @@ export function buildScene(settings: Settings, imageCount: number, width: number
   // 小さい絵を奥、大きい絵を手前に描く。文字は読めるよう絵より手前
   sprites.sort((a, b) => Number(a.text) - Number(b.text) || a.size - b.size);
 
-  return { width, height, sprites, spawnSeconds, totalSeconds: Math.max(spawnSeconds, maxEnd) + 0.2, envelope };
+  return { width, height, sprites, spawnSeconds, totalSeconds: Math.max(spawnSeconds, maxEnd) + 0.2, envelope, phraseHeight: textHeight };
 }
 
 /** 時刻 t の絵の位置と傾き */
@@ -162,18 +187,12 @@ const BANNER_POP_OUT = 0.35;
 /**
  * 下に固定する文字の位置と大きさ。
  * @param aspect 文字の画像の横/縦
- * @param lines 行数
  */
-export function bannerPose(t: number, scene: Scene, settings: Settings, aspect: number, lines: number) {
+export function bannerPose(t: number, scene: Scene, settings: Settings, aspect: number) {
   const { width: W, height: H } = scene;
   const mode = settings.text.bottom;
   if (mode === 'off' || t < 0 || t > scene.totalSeconds) return null;
-  // 大きさ: 1行の高さを決めて、横や縦にはみ出すなら縮める
-  let h = H * (0.1 + 0.1 * settings.text.size) * (lines + 0.2);
-  let w = h * aspect;
-  const fit = Math.min(1, (W * 0.94) / w, (H * 0.5) / h);
-  w *= fit;
-  h *= fit;
+  const { w, h } = bannerBox(settings, W, H, aspect);
   let x = W / 2;
   let y = H - H * 0.03 - h / 2;
 
@@ -190,7 +209,7 @@ export function bannerPose(t: number, scene: Scene, settings: Settings, aspect: 
 
   // シェイク: 盛り上がっているときほど強く揺れる（1秒に24回ガタガタ）
   if (mode === 'shake') {
-    const strength = H * 0.022 * (0.35 + 0.65 * scene.envelope(Math.min(t, scene.spawnSeconds)));
+    const strength = Math.min(W, H) * 0.022 * (0.35 + 0.65 * scene.envelope(Math.min(t, scene.spawnSeconds)));
     const step = Math.floor(t * 24);
     x += (hash01(step * 2 + 1) - 0.5) * 2 * strength;
     y += (hash01(step * 2 + 2) - 0.5) * 1.4 * strength;
