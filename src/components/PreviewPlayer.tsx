@@ -1,7 +1,8 @@
 // リアルタイムプレビュー。書き出しと同じ台本（scene）と描画（renderFrame）を使います。
 // 下のグラフは「いつ、どれくらい流れるか」。ドラッグで好きな時刻を見られます。
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { prepareAssets, prepareBackground, renderFrame, type TextSources } from '../lib/renderer';
+import { downloadBlob, makeFileName } from '../lib/download';
+import { makeCanvas, prepareAssets, prepareBackground, renderFrame, type TextSources } from '../lib/renderer';
 import type { Scene } from '../lib/scene';
 import type { Illustration, Settings } from '../types';
 import styles from './PreviewPlayer.module.css';
@@ -70,6 +71,30 @@ export function PreviewPlayer({ scene, images, textSources, settings, background
     // draw は毎回作り直されるので依存に入れない（scene / assets / settings が変われば再開される）
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing, scene, assets, settings, scale]);
+
+  // 今見えている瞬間を、書き出しと同じ大きさ（1920×1080 など）の PNG で保存する
+  const [saving, setSaving] = useState(false);
+  const saveImage = async () => {
+    if (saving) return;
+    setSaving(true);
+    setPlaying(false);
+    try {
+      const t = timeRef.current;
+      const canvas = makeCanvas(scene.width, scene.height);
+      const full = {
+        ...prepareAssets(images, scene.height * settings.flow.sizeMax, { sources: textSources, phraseHeight: scene.phraseHeight }),
+        background: prepareBackground(backgroundImage, scene.width, scene.height),
+      };
+      renderFrame(canvas.getContext('2d')!, scene, t, full, settings);
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+      if (!blob) throw new Error('画像を作れませんでした');
+      const url = URL.createObjectURL(blob);
+      downloadBlob(url, makeFileName('png').replace('.png', `-${t.toFixed(1)}s.png`));
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const seek = (t: number) => {
     timeRef.current = t;
@@ -145,6 +170,10 @@ export function PreviewPlayer({ scene, images, textSources, settings, background
         >
           <RestartIcon />
           <span>最初から</span>
+        </button>
+        <button type="button" className={styles.control} onClick={saveImage} disabled={saving} title="今の瞬間を動画と同じ大きさの PNG で保存（背景が透過なら透明のまま）">
+          <span aria-hidden="true">📷</span>
+          <span>{saving ? '保存中…' : '画像で保存'}</span>
         </button>
         <p className={styles.info}>
           {time.toFixed(1)} / {scene.totalSeconds.toFixed(1)} 秒 ・ 絵・文字 {scene.sprites.length} 個
