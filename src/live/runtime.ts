@@ -13,7 +13,7 @@ export type LiveConfig = {
   /** イラスト（data URL） */
   images: string[];
   /** 文字の画像（data URL）。文字を出さないときは null */
-  text?: { phrases: string[]; banner: string | null; bannerLines: number } | null;
+  text?: { phrases: string[]; banners: { src: string; lines: number }[] } | null;
 };
 
 declare global {
@@ -45,8 +45,7 @@ async function start() {
   const text: TextSources | null = config.text
     ? {
         phrases: await Promise.all(config.text.phrases.map(load)),
-        banner: config.text.banner ? await load(config.text.banner) : null,
-        bannerLines: config.text.bannerLines,
+        banners: await Promise.all(config.text.banners.map(async (b) => ({ source: await load(b.src), lines: b.lines }))),
       }
     : null;
   const sceneText = text ? textInfo(text) : undefined;
@@ -61,7 +60,7 @@ async function start() {
     height = Math.max(1, Math.round(window.innerHeight));
     canvas.width = width;
     canvas.height = height;
-    assets = prepareAssets(illustrations, height * settings.flow.sizeMax, { sources: text, phraseHeight: phraseHeight(settings, width, height, sceneText?.banner) });
+    assets = prepareAssets(illustrations, height * settings.flow.sizeMax, { sources: text, phraseHeight: phraseHeight(settings, width, height, sceneText?.banners) });
   };
   resize();
   window.addEventListener('resize', resize);

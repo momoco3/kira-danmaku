@@ -71,7 +71,8 @@ export function curveShape(curve: Curve, u: number): number {
 }
 
 /** 文字の数と、下に固定する文字の画像の形（横/縦・行数） */
-export type SceneText = { count: number; banner: { aspect: number; lines: number } | null };
+export type SceneText = { count: number; banners: BannerShape[] };
+type BannerShape = { aspect: number; lines: number };
 
 /**
  * 下に固定する文字の大きさ（px、ふちこみ）。
@@ -90,8 +91,19 @@ export function bannerBox(settings: Settings, width: number, height: number, asp
  * 縦長の画面でも大きくなりすぎないよう、短いほうの辺に合わせる。
  * 下に固定する文字があるときは、それより必ず小さく（1行の半分くらいまで）する
  */
-export function phraseHeight(settings: Settings, width: number, height: number, banner: SceneText['banner'] = null) {
+/**
+ * 下に固定する文字の折り返し方（banners の番号）を選ぶ。
+ * いちばん大きく出せるものを選び、同じくらいなら折り返しの少ないほうにする
+ */
+export function pickBanner(settings: Settings, width: number, height: number, banners: BannerShape[]) {
+  const sizes = banners.map((b) => bannerBox(settings, width, height, b.aspect).h);
+  const best = Math.max(0, ...sizes);
+  return sizes.findIndex((h) => h >= best * 0.97);
+}
+
+export function phraseHeight(settings: Settings, width: number, height: number, banners: BannerShape[] = []) {
   const h = Math.min(width, height) * (0.06 + 0.08 * settings.text.size);
+  const banner = banners[pickBanner(settings, width, height, banners)];
   if (settings.text.bottom === 'off' || !banner) return h;
   const bannerLine = bannerBox(settings, width, height, banner.aspect).h / banner.lines;
   return Math.min(h, bannerLine * 0.55);
@@ -103,7 +115,7 @@ export function phraseHeight(settings: Settings, width: number, height: number, 
 export function buildScene(settings: Settings, imageCount: number, width: number, height: number, text?: SceneText): Scene {
   const { flow, output } = settings;
   const textCount = settings.text.flow ? (text?.count ?? 0) : 0;
-  const textHeight = phraseHeight(settings, width, height, text?.banner);
+  const textHeight = phraseHeight(settings, width, height, text?.banners);
   // 文字の割合。絵がないときは文字だけ流す
   const textShare = imageCount === 0 ? 1 : 0.6 * settings.text.amount;
   const random = createRandom(output.seed * 7919 + 17);

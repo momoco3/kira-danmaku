@@ -63,7 +63,7 @@ export default function App() {
   const canMake = images.length > 0 || hasText;
 
   const { width, height } = sizeOf(settings.output.size);
-  const sceneText = useMemo(() => textArt && textInfo(textArt), [textArt]);
+  const sceneText = useMemo(() => textSources && textInfo(textSources), [textSources]);
   const scene = useMemo(() => buildScene(settings, images.length, width, height, sceneText ?? undefined), [settings, images.length, width, height, sceneText]);
   // 透過 WebM は「透明度の映像」が別に入るぶん大きくなる
   const transparentWebm = settings.output.format === 'webm' && settings.output.background === 'transparent';

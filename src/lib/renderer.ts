@@ -1,7 +1,7 @@
 // 1コマを描くファイルです。プレビューと書き出しで共通です。
 // 描く順番: 画面全体の星 → 絵の後ろのキラキラの尾 → 絵（光のにじみ＋絵）→ 絵に乗る「キラーン」
 import type { Illustration, Settings } from '../types';
-import { bannerPose, hash01, spritePose, type Scene } from './scene';
+import { bannerPose, hash01, pickBanner, spritePose, type Scene } from './scene';
 
 type SpriteArt = { canvas: HTMLCanvasElement; glow: HTMLCanvasElement; aspect: number; glowPad: number };
 
@@ -9,14 +9,14 @@ type SpriteArt = { canvas: HTMLCanvasElement; glow: HTMLCanvasElement; aspect: n
 export type ArtSource = { image: CanvasImageSource; width: number; height: number };
 
 /** 文字の画像（textArt.ts で作ったもの、生配信モードでは埋め込んだ画像） */
-export type TextSources = { phrases: ArtSource[]; banner: ArtSource | null; bannerLines: number };
+export type TextSources = { phrases: ArtSource[]; banners: { source: ArtSource; lines: number }[] };
 
 export type Assets = {
   images: SpriteArt[];
   /** 一緒に流す文字 */
   texts: SpriteArt[];
-  /** 下に固定する文字 */
-  banner: { image: CanvasImageSource; aspect: number; lines: number } | null;
+  /** 下に固定する文字（折り返し方ちがい） */
+  banners: { image: CanvasImageSource; aspect: number; lines: number }[];
   glints: HTMLCanvasElement[];
   /** 主線の太いイラストの星 */
   stars: HTMLCanvasElement[];
@@ -50,7 +50,7 @@ export function prepareAssets(illustrations: ArtSource[], spriteHeight: number, 
   return {
     images: illustrations.map((ill) => prepareSprite(ill, spriteHeight)),
     texts: sources ? sources.phrases.map((p) => prepareSprite(p, text.phraseHeight * 1.2)) : [],
-    banner: sources?.banner ? { image: sources.banner.image, aspect: sources.banner.width / sources.banner.height, lines: sources.bannerLines } : null,
+    banners: (sources?.banners ?? []).map((b) => ({ image: b.source.image, aspect: b.source.width / b.source.height, lines: b.lines })),
     glints: GLINT_COLORS.map(makeGlint),
     stars: STAR_COLORS.map(makeStar),
   };
@@ -271,7 +271,8 @@ export function renderFrame(ctx: CanvasRenderingContext2D, scene: Scene, t: numb
   }
 
   // ---- 下に固定する文字（いちばん手前） ----
-  const banner = assets.banner;
+  // 画面の形に合わせて、いちばん大きく出せる折り返し方を使う
+  const banner = assets.banners[pickBanner(settings, W, H, assets.banners)];
   const bp = banner && bannerPose(t, scene, settings, banner.aspect);
   if (banner && bp && bp.scale > 0.01) {
     ctx.globalCompositeOperation = 'source-over';

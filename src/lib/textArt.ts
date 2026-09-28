@@ -15,12 +15,14 @@ const INK = '#2b2140';
 const RAINBOW = ['#ffd93b', '#ff5fa2', '#4fd8ff', '#a4f23b', '#a57bff', '#ff9a3d'];
 const SOLID: Record<Exclude<TextColor, 'rainbow'>, string> = { yellow: '#ffd93b', pink: '#ff5fa2', white: '#ffffff' };
 
-/** 文字の画像。phrases = 流す文字（1行ずつ）、banner = 下に固定する文字（全部の行） */
+/**
+ * 文字の画像。phrases = 流す文字（1行ずつ）、banners = 下に固定する文字（全部の行）。
+ * banners は折り返し方を変えたもの（折り返しなし・2つに折る・3つに折る）で、
+ * 画面の形に合わせていちばん大きく出せるものを使う（縦長の画面なら折り返したもの）
+ */
 export type TextArt = {
   phrases: HTMLCanvasElement[];
-  banner: HTMLCanvasElement | null;
-  /** banner の行数 */
-  bannerLines: number;
+  banners: { canvas: HTMLCanvasElement; lines: number }[];
 };
 
 export function textLines(text: Pick<TextSettings, 'content'>): string[] {
@@ -42,9 +44,72 @@ export async function makeTextArt(text: Pick<TextSettings, 'content' | 'color'>)
   }
   return {
     phrases: lines.map((line) => drawText([line], text.color)),
-    banner: drawText(lines, text.color),
-    bannerLines: lines.length,
+    banners: wrapVariants(lines).map((wrapped) => ({ canvas: drawText(wrapped, text.color), lines: wrapped.length })),
   };
+}
+
+// ---- 折り返し ----
+/** 行の頭に来てはいけない文字（のばし棒・小さい字・句読点・閉じかっこ） */
+const NO_LINE_START = /[ーぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮヵヶ、。，．・：；）」』】〕～〜…‥)\]}〉》.,:;~-]/;
+const MARK = /[!！?？]/;
+const WORD = /[A-Za-z0-9]/;
+const KANJI = /\p{Script=Han}/u;
+
+/** 折り返しなし・2つに折る・3つに折る の3通り（同じになるものは1つにまとめる） */
+function wrapVariants(lines: string[]): string[][] {
+  const variants: string[][] = [];
+  for (const pieces of [1, 2, 3]) {
+    const wrapped = lines.flatMap((line) => splitLine(line, pieces));
+    if (wrapped.length > 8) break;
+    if (!variants.some((v) => v.join('\n') === wrapped.join('\n'))) variants.push(wrapped);
+  }
+  return variants;
+}
+
+/** 1行をだいたい同じ長さに分ける。「ー」や小さい字が行の頭に来ない、「！！！」はまとめる */
+function splitLine(line: string, pieces: number): string[] {
+  const chars = Array.from(line);
+  // 短い行（6文字くらいまで）は分けない。長い行ほど多めに分けられる
+  pieces = Math.min(pieces, Math.floor(chars.length / 3.5));
+  if (pieces <= 1) return [line];
+  const canBreak = (i: number) => {
+    const prev = chars[i - 1];
+    const next = chars[i];
+    if (next === ' ' || prev === ' ' || next === '　' || prev === '　') return true;
+    if (NO_LINE_START.test(next)) return false;
+    if (MARK.test(next) && MARK.test(prev)) return false;
+    if (WORD.test(next) && WORD.test(prev)) return false;
+    // 「天才」などの漢字の熟語は分けない
+    if (KANJI.test(next) && KANJI.test(prev)) return false;
+    return true;
+  };
+  const breaks: number[] = [];
+  let from = 1;
+  for (let k = 1; k < pieces; k++) {
+    const ideal = (chars.length * k) / pieces;
+    // 行の最後の「！！」の前・「！」のすぐあと・空白のところは、切れ目として選ばれやすくする
+    const goodBreak = (i: number) =>
+      (MARK.test(chars[i]) && chars.slice(i).every((c) => MARK.test(c))) ||
+      (MARK.test(chars[i - 1]) && !MARK.test(chars[i])) ||
+      /[ 　]/.test(chars[i - 1]);
+    const cost = (i: number) => Math.abs(i - ideal) - (goodBreak(i) ? 3 : 0);
+    let best = -1;
+    for (let i = from; i < chars.length; i++) {
+      if (canBreak(i) && (best < 0 || cost(i) < cost(best))) best = i;
+    }
+    // 残りが短すぎる分け方はしない
+    if (best < 0 || chars.length - best < 2 || best - (breaks.at(-1) ?? 0) < 2) break;
+    breaks.push(best);
+    from = best + 1;
+  }
+  const result: string[] = [];
+  let start = 0;
+  for (const b of [...breaks, chars.length]) {
+    const piece = chars.slice(start, b).join('').trim();
+    if (piece) result.push(piece);
+    start = b;
+  }
+  return result;
 }
 
 function drawText(lines: string[], color: TextColor): HTMLCanvasElement {
@@ -125,14 +190,13 @@ function drawText(lines: string[], color: TextColor): HTMLCanvasElement {
 export function toTextSources(art: TextArt | null): TextSources | null {
   if (!art) return null;
   const source = (c: HTMLCanvasElement) => ({ image: c, width: c.width, height: c.height });
-  return { phrases: art.phrases.map(source), banner: art.banner && source(art.banner), bannerLines: art.bannerLines };
+  return { phrases: art.phrases.map(source), banners: art.banners.map((b) => ({ source: source(b.canvas), lines: b.lines })) };
 }
 
 /** 台本づくりに使う文字の情報 */
-export function textInfo(art: TextArt | TextSources): SceneText {
-  const banner = art.banner;
+export function textInfo(sources: TextSources): SceneText {
   return {
-    count: art.phrases.length,
-    banner: banner ? { aspect: banner.width / banner.height, lines: art.bannerLines } : null,
+    count: sources.phrases.length,
+    banners: sources.banners.map((b) => ({ aspect: b.source.width / b.source.height, lines: b.lines })),
   };
 }

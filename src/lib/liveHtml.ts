@@ -19,8 +19,10 @@ export async function buildLiveHtml(images: Illustration[], textArt: TextArt | n
     text: textArt && {
       phrases: textArt.phrases.map((c) => toDataUrl(c, c.width, c.height, MAX_TEXT_HEIGHT)),
       // 下に固定する文字は大きく出るので、縮めすぎない
-      banner: textArt.banner && toDataUrl(textArt.banner, textArt.banner.width, textArt.banner.height, MAX_TEXT_HEIGHT * 2 * textArt.bannerLines),
-      bannerLines: textArt.bannerLines,
+      banners: textArt.banners.map((b) => ({
+        src: toDataUrl(b.canvas, b.canvas.width, b.canvas.height, MAX_TEXT_HEIGHT * 2 * b.lines),
+        lines: b.lines,
+      })),
     },
   };
   const safe = (text: string) => text.replace(/<\/(script)/gi, '<\\/$1');
